@@ -27,7 +27,7 @@ jobs:
           rm -rf .github/workflows/template-cleanup.yml
           
           # Update README
-          sed -i "s/<repository-url>/${REPO_URL}/g" README.md
+          sed -i "s|<repository-url>|${REPO_URL}|g" README.md
           
           # Commit changes
           git config --global user.name 'GitHub Actions'
