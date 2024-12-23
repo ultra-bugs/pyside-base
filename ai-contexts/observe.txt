@@ -1,0 +1,142 @@
+
+# Observe design pattern
+
+
+
+
+# Publisher (Subject)
+@singleton
+class Publisher:
+    def __init__(self):
+        self.global_subscribers = []
+        self.event_specific_subscribers = {}
+
+    def subscribe(self, subscriber, event=None):
+        if event is None:
+            self.global_subscribers.append(subscriber)
+        else:
+            if event not in self.event_specific_subscribers:
+                self.event_specific_subscribers[event] = []
+            if subscriber not in self.event_specific_subscribers[event]:
+                self.event_specific_subscribers[event].append(subscriber)
+
+    def unsubscribe(self, subscriber):
+        if subscriber in self.global_subscribers:
+            self.global_subscribers.remove(subscriber)
+        for event, subscribers in self.event_specific_subscribers.items():
+            if subscriber in subscribers:
+                subscribers.remove(subscriber)
+
+    def notify(self, event, data=None, *args, **kwargs):
+        args = (event, data) + args
+        kwargs.pop("event", None)
+        kwargs.pop("data", None)
+        # print("notify event", event)
+        # print(args)
+        # print(kwargs)
+        # Notify global subscribers
+        for subscriber in self.global_subscribers:
+            subscriber.update(*args, **kwargs)
+
+        # Notify event-specific subscribers
+        if event in self.event_specific_subscribers:
+            for subscriber in self.event_specific_subscribers[event]:
+                subscriber.update(*args, **kwargs)
+        else:
+            # print('No subscribers for event "%s"' % event)
+            # print(self.event_specific_subscribers)
+            pass
+
+    def connect(self, widget, signal_name, event, data=None, **kwargs):
+        slot = getattr(widget, signal_name)
+        if hasattr(widget, "model") and hasattr(widget.model, signal_name):
+            slot = getattr(widget.model, signal_name)
+
+        # if isinstance(slot, pyqtBoundSignal):
+        #     print(slot)
+        # do no thing
+        # pass
+        if slot is not None:
+
+            slot.connect(
+                lambda *args, **signal_kwargs: (
+                    kwargs.pop("event", None),
+                    kwargs.pop("data", None),
+                    signal_kwargs.pop("event", None),
+                    signal_kwargs.pop("data", None),
+                    self.notify(*[event, data, *args], **{**kwargs, **signal_kwargs}),
+                )
+            )
+            caller = inspect.currentframe().f_back.f_locals.get("self", None)
+            if hasattr(caller, "handler"):
+                caller = caller.handler
+                if isinstance(caller, Subscriber):
+                    self.subscribe(caller, event)
+
+
+# Subscriber (Observer)
+class Subscriber:
+    def __init__(self, events):
+        self.events = events
+        self.isGlobalEvent = False
+
+    def _build_args(self, data, args, params_info):
+
+        pass
+
+    def on_event(self, event, data=None, *args, **kwargs):
+        try:
+            self._exec_event_handler(event, data, *args, **kwargs)
+        except Exception as e:
+            print(e)
+            from bootstrap import logger
+
+            logger.exception(f"Exception in on_event: {str(e)}")
+            QApplication.instance().postEvent(QApplication.instance(), QExceptionEvent(e))
+
+    def _exec_event_handler(self, event, data=None, *args, **kwargs):
+        method_name = f"on_{event}"
+        # args = [data, *args]
+        if hasattr(self, method_name):
+            method_signature = inspect.signature(getattr(self, method_name))
+            parameters = method_signature.parameters
+            need_to_be_call_with_data = "data" in parameters
+            accepts_args = any(param.kind == inspect.Parameter.VAR_POSITIONAL for param in parameters.values())
+            accepts_kwargs = any(param.kind == inspect.Parameter.VAR_KEYWORD for param in parameters.values())
+            if len(parameters) == 0 and not accepts_args and not accepts_kwargs:
+                print("case 0")
+                return getattr(self, method_name)()
+            else:
+                args_to_send = [*args]
+                if len(args) == len(parameters) and not accepts_args and not accepts_kwargs:
+                    print("case 0.1")
+                    return getattr(self, method_name)(*args)
+                if need_to_be_call_with_data:
+                    print("prepend data to args")
+                    args_to_send = [data, *args]
+                if accepts_args and accepts_kwargs:
+                    print("case 1")
+                    return getattr(self, method_name)(*args_to_send, **kwargs)
+                if accepts_args:
+                    print("case 2")
+                    return getattr(self, method_name)(*args_to_send)
+                if accepts_kwargs:
+                    try:
+                        print("case 3")
+                        return getattr(self, method_name)(**kwargs)
+                    except TypeError as e:
+                        print(e)
+                        print("case 3.1")
+                        newArgs = [*args_to_send][: len(parameters) - 1]
+                        print("call with", newArgs)
+                        return getattr(self, method_name)(*newArgs, **kwargs)
+                        pass
+                # if "data" in parameters:
+                #     print("case 4")
+                #     return getattr(self, method_name)(*args, data=data)
+                print("case 5")
+                return getattr(self, method_name)(*args_to_send)
+
+    def update(self, event, data=None, *args, **kwargs):
+        if event in self.events or self.isGlobalEvent:
+            self.on_event(*[event, data, *args], **kwargs)

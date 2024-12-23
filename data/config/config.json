@@ -1,0 +1,16 @@
+{
+  "app": {
+    "name": "Base Qt Application",
+    "version": "1.0.0",
+    "debug": false
+  },
+  "ui": {
+    "theme": "auto",
+    "language": "en",
+    "high_dpi": true
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "app.log"
+  }
+}

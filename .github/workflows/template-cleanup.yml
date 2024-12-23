@@ -1,0 +1,34 @@
+name: Template Cleanup
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - '.github/**'
+      - 'ai-contexts/**'
+
+jobs:
+  cleanup:
+    name: Template Cleanup
+    runs-on: ubuntu-latest
+    if: github.event.repository.name != 'base-qt-app'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Cleanup
+        run: |
+          # Remove template-specific files
+          rm -rf .github/workflows/template-cleanup.yml
+          
+          # Update README
+          sed -i "s/<repository-url>/${GITHUB_REPOSITORY}/g" README.md
+          
+          # Commit changes
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          git add -A
+          git commit -am "Initialize template repository"
+          git push 
