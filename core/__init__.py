@@ -8,11 +8,11 @@
 #
 #              * * * * * * * * * * * * * * * * * * * * *
 #              * -    - -   F.R.E.E.M.I.N.D   - -    - *
-#              * -  Copyright © 2024 (Z) Programing  - *
+#              * -  Copyright © 2025 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
 
-from core.BaseComponent import BaseComponent
+#
 from core.BaseController import BaseController
 from core.Config import Config
 from core.Exceptions import (AppException, ConfigError, ExceptionHandler, ServiceError, UIError)
@@ -28,7 +28,6 @@ __all__ = [
     'Publisher',
     'Subscriber',
     'BaseController',
-    'BaseComponent',
     'WidgetManager',
     'QtAppContext',
     'AppException',

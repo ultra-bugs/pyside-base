@@ -8,22 +8,21 @@
 #
 #              * * * * * * * * * * * * * * * * * * * * *
 #              * -    - -   F.R.E.E.M.I.N.D   - -    - *
-#              * -  Copyright © 2024 (Z) Programing  - *
+#              * -  Copyright © 2025 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
 
-from core import Subscriber
+#
+from core.Observer import Subscriber
 
 
 class MainHandler(Subscriber):
     """Handler for main window events"""
     
-    def __init__(self, controller):
-        self.controller = controller
-        events = [
-            # Add your events here
-        ]
+    def __init__(self, widget_manager, events):
         super().__init__(events)
+        self.widget_manager = widget_manager
+        self.controller = widget_manager.controller
     
     # Add your event handlers here
     # def on_event_name(self, data=None):

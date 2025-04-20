@@ -8,61 +8,97 @@
 #
 #              * * * * * * * * * * * * * * * * * * * * *
 #              * -    - -   F.R.E.E.M.I.N.D   - -    - *
-#              * -  Copyright © 2024 (Z) Programing  - *
+#              * -  Copyright © 2025 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
 
-from typing import Dict, List, Optional
+#
+import importlib
+from abc import ABC, abstractmethod
+from typing import Dict, List
 
 from PySide6.QtWidgets import QWidget
 
 from core.Observer import Publisher
+from core.WidgetManager import WidgetManager
 
 
-class BaseController:
+class ControllerMeta(type(QWidget), type(ABC)):
+    required_attrs = ["slot_map"]
+    
+    def __new__(cls, name, bases, dct):
+        required_attrs = cls.required_attrs
+        for attr in required_attrs:
+            if attr not in dct:
+                raise ValueError(f"Attribute: {attr} is required but not defined in {name}")
+        return super().__new__(cls, name, bases, dct)
+
+
+class BaseController(metaclass=ControllerMeta):
     """Base class for all controllers"""
+    slot_map: Dict[str, List[str]] = {}
+    signal_connected = False
+    is_auto_connect_signal = True
     
-    def __init__(self):
-        """Initialize the controller"""
+    def __init__(
+            self,
+            parent = None,
+    ):
+        super().__init__()
+        self.widget_manager = WidgetManager(self)
+        self.controller_name = self.__class__.__name__
         self.publisher = Publisher()
-        self.widgets: Dict[str, QWidget] = {}
-        self.slot_map: Dict[str, List[str]] = {}
-        
-        # Setup UI and connect signals
-        self.setupUi()
-        self._connect_signals()
+        self.setupUi(self)
+        if not self.is_auto_connect_signal:
+            return
+        # Prepare modules,classes to search
+        search_modules = ["windows.handlers", ".".join(self.__module__.split(".")[:-1])]
+        search_cls = [self.controller_name, self.controller_name.replace("Controller", "")]
+        # Auto-loading handler
+        for module in search_modules:
+            for cls in search_cls:
+                if importlib.util.find_spec(f"{module}.{cls}Handler") is None:
+                    continue
+                # If the module is found, import it
+                handler_module = importlib.import_module(f"{module}.{cls}Handler")
+                self.handler = getattr(handler_module, f"{cls}Handler")(
+                        widget_manager=self.widget_manager, events=self.slot_map.keys()
+                )
+                break
+        if self.is_auto_connect_signal:
+            self._connect_signals()
     
-    def setupUi(self):
-        """Setup the UI components"""
-        raise NotImplementedError("Subclasses must implement setupUi")
+    @abstractmethod
+    def setupUi(self, widget):
+        """Set up the UI components"""
+        pass
     
     def _connect_signals(self):
-        """Connect Qt signals to event system"""
         if not hasattr(self, 'slot_map'):
-            raise ValueError(f"{self.__class__.__name__} must define slot_map")
-        
-        for event, (widget_name, signal_name) in self.slot_map.items():
-            if not hasattr(self, widget_name):
-                continue
-            
-            widget = getattr(self, widget_name)
-            self.publisher.connect(widget, signal_name, event)
-    
-    def register_widget(self, name: str, widget: QWidget):
-        """Register a widget for later access"""
-        self.widgets[name] = widget
-        setattr(self, name, widget)
-    
-    def get_widget(self, name: str) -> Optional[QWidget]:
-        """Get a registered widget by name"""
-        return self.widgets.get(name)
-    
-    def show(self):
-        """Show the main widget of the controller"""
-        if hasattr(self, 'widget'):
-            self.widget.show()
-    
-    def hide(self):
-        """Hide the main widget of the controller"""
-        if hasattr(self, 'widget'):
-            self.widget.hide()
+            raise ValueError(f"{self.__class__.__name__} must define slot_map to use auto connect signals")
+        subscriber = self.handler
+        for event in self.handler.events:
+            if event in self.slot_map.keys():
+                t = self.slot_map.get(event)
+                if t is None:
+                    continue
+                if callable(t):
+                    t(self.handler, self.publisher)
+                    continue
+                    # TODO: find a better way to do this
+                    pass
+                try:
+                    
+                    self.publisher.connect(
+                            self.widget_manager.get(t[0]),
+                            t[1],
+                            event,
+                            data={"widget": self.widget_manager.get(t[0])},
+                    )
+                except AttributeError:
+                    wd = self.widget_manager.get(t[0])
+                    print('widget "%s" does not have attribute "%s"' % (wd, t[1]))
+                    print("x")
+                    pass
+                self.publisher.subscribe(subscriber=subscriber, event=event)
+        self.signal_connected = True

@@ -12,7 +12,7 @@ jobs:
   cleanup:
     name: Template Cleanup
     runs-on: ubuntu-latest
-    if: github.event.repository.name != 'base-qt-app'
+    if: github.event.repository.name != 'pyside-base'
     
     steps:
       - name: Checkout
@@ -25,7 +25,7 @@ jobs:
         run: |
           # Remove template-specific files
           rm -rf .github/workflows/template-cleanup.yml
-          
+          mv ai-contexts docs
           # Update README
           sed -i "s|<repository-url>|${REPO_URL}|g" README.md
           

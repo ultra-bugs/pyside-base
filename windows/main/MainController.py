@@ -8,61 +8,36 @@
 #
 #              * * * * * * * * * * * * * * * * * * * * *
 #              * -    - -   F.R.E.E.M.I.N.D   - -    - *
-#              * -  Copyright © 2024 (Z) Programing  - *
+#              * -  Copyright © 2025 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
 
+#
 from pathlib import Path
 
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QLabel, QMainWindow, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QMainWindow
 
 from core import BaseController, Config
-from windows.main.handlers.MainHandler import MainHandler
+from windows.main.main_window import Ui_MainWindow
 
 
-class MainController(BaseController):
-    """Main window controller"""
+class MainController(Ui_MainWindow, BaseController, QMainWindow):
+    slot_map = {
     
-    def __init__(self):
-        # Define slot map before calling parent's __init__
-        self.slot_map = {
-            # Add your slot mappings here
-            # 'event_name': ['widget_name', 'signal_name']
-        }
-        
-        # Initialize handler
-        self.handler = MainHandler(self)
-        
-        super().__init__()
+    }
     
-    def setupUi(self):
-        """Setup the UI components"""
-        # Create main window
-        self.widget = QMainWindow()
-        
-        # Set window properties
+    def __init__(self, parent = None):
+        super().__init__(parent)
+        self.initialize_ui()
+    
+    def initialize_ui(self):
+        """Khởi tạo các thành phần UI"""
         config = Config()
-        self.widget.setWindowTitle(config.get("app.name", "Base Qt Application"))
-        self.widget.resize(800, 600)
-        
+        self.setWindowTitle(config.get("app.name", "Base Qt Application"))
         # Set window icon
         icon_path = Path("assets/icon.png")
         if icon_path.exists():
-            self.widget.setWindowIcon(QIcon(str(icon_path)))
-        
-        # Create central widget and layout
-        central_widget = QWidget()
-        self.widget.setCentralWidget(central_widget)
-        layout = QVBoxLayout(central_widget)
-        
-        # Add hello text
-        hello_label = QLabel(
-            f"Welcome to {config.get('app.name', 'Base Qt Application')} v{config.get('app.version', '1.0.0')}")
-        hello_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(hello_label)
-        
-        # Register widgets
-        self.register_widget('mainWindow', self.widget)
-        self.register_widget('helloLabel', hello_label)
+            self.setWindowIcon(QIcon(str(icon_path)))
+        # Khởi tạo UI
+        self.label.setText(f'Hello from {config.get("app.name", "Base Qt Application")}')
