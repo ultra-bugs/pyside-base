@@ -13,12 +13,15 @@
 #              * * * * * * * * * * * * * * * * * * * * *
 
 #
+#
 from core.BaseController import BaseController
 from core.Config import Config
 from core.Exceptions import (AppException, ConfigError, ExceptionHandler, ServiceError, UIError)
 from core.Logging import setup_logging
 from core.Observer import Publisher, Subscriber
 from core.QtAppContext import QtAppContext
+from core.TaskSystem import (ComputeIntensiveStep, ConditionStep, LoopStep, PrintStep, SetVariableStep, SleepStep, Task,
+                             TaskManager, TaskSignals, TaskStatus, TaskStep)
 from core.WidgetManager import WidgetManager
 
 # Setup logging
@@ -36,5 +39,16 @@ __all__ = [
     'UIError',
     'ExceptionHandler',
     'Config',
-    'logger'
+    'logger',
+    'TaskManager',
+    'Task',
+    'TaskStatus',
+    'TaskStep',
+    'TaskSignals',
+    'ConditionStep',
+    'LoopStep',
+    'PrintStep',
+    'SetVariableStep',
+    'SleepStep',
+    'ComputeIntensiveStep'
 ]

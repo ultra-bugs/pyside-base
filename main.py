@@ -8,10 +8,11 @@
 #
 #              * * * * * * * * * * * * * * * * * * * * *
 #              * -    - -   F.R.E.E.M.I.N.D   - -    - *
-#              * -  Copyright © 2024 (Z) Programing  - *
+#              * -  Copyright © 2025 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
 
+#
 import os
 import sys
 from pathlib import Path
@@ -70,8 +71,10 @@ def main():
         app = QApplication(sys.argv)
         app.setAttribute(Qt.AA_EnableHighDpiScaling)
         setup_theme(config)
-        # Create and show main window
+        
+        # Create main window
         main_controller = MainController()
+        # Show main window
         main_controller.show()
         
         # Start event loop
