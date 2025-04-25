@@ -1,4 +1,6 @@
 name: Template Cleanup
+permissions: 
+  contents: write
 on:
   push:
     branches:
