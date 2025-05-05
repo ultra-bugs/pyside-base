@@ -1,0 +1,5 @@
+### ignore all but not gitignore template
+#Ignore all, but keep .gitignore.
+#Same popurse as .gitkeep
+*
+!.gitignore
