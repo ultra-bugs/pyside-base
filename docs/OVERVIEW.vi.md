@@ -24,16 +24,20 @@ yêu cầu
 
 
 ***Cấu trúc thư mục***
-\+ **naming_convention** sử dụng CamelCase cho method, variable, property và CapitalizeCase cho các class, file. 
-                        Ví dụ: `MainController.py`
-                
-                sử dụng từ khoá mô tả những gì chứa bên trong đối với thư mục. cố gắng giữ trong khoảng 1-2 từ.
-                Ví dụ: `windows/main/ui`
+
+
+\+ **naming_convention** 
+    
+    sử dụng CamelCase cho method, variable, property và CapitalizeCase cho các class, file.  
+    Ví dụ: `MainController.py`            
+    sử dụng từ khoá mô tả những gì chứa bên trong đối với thư mục. cố gắng giữ trong khoảng 1-2 từ.
+    Ví dụ: `windows/main/ui`
 
 
 \+ **core :** chứa các class, design pattern mà sẽ được dùng và triển
-khai tại nhiều nơi trong app***\
-***+ **windows :** lưu views và controller và các event handler cho
+khai tại nhiều nơi trong app
+
+\+ **windows :** lưu views và controller và các event handler cho
 controller.
 
 \+ **scripts:** chứa các file script chủ yếu phục vụ CLI
@@ -68,7 +72,7 @@ quản lý các *widget* mà nó khởi tạo thông qua **core.WidgetManager**
 (tiện việc từ ngoài gọi tới hay từ trong gọi ra)
 
 Xử lý các event đến từ người dùng: Event Handler được thiết kế theo
-design pattern **Observe (Pub/Sub).** (xem observer pattern ở file ./ai-contexts/observer_pattern.txt)
+design pattern **Observe (Pub/Sub).** (xem observer pattern ở file ./docs/observer_pattern.txt)
 
 Các method xử lý của controller sẽ nằm ở **windows.handlers.
 {controller_name}Handler**
