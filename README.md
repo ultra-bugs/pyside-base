@@ -1,6 +1,6 @@
 # UltraBugz pyside_base - Desktop application ship faster
 
-> > Also have a Tiếng Việt version of this README: [README.vi.md](./README.vi.md)
+> Also have a Tiếng Việt version of this README: [README.vi.md](./README.vi.md)
 
 ## Inspired Mindset
 
@@ -28,7 +28,7 @@ of code here is designed to encourage flexibility, reusability, and long-term sc
 9. [Contributing](#contributing)
 10. [License](#license-1)
 
-There are other components also documented. See in [Docs] (./ Docs).
+There are other components also documented. See in [Docs](./docs).
 
 ---
 
@@ -48,25 +48,30 @@ There are other components also documented. See in [Docs] (./ Docs).
 ## Project Initialization
 
 Get your app skeleton ready with the right mindset:
-
-1. **Clone & Install**
+1. Use template:
 
    ```bash
-   git clone https://github.com/MyL1nk/ccpy.git my-app
+   gh repo create my-app --template=https://github.com/ultra-bugs/pyside-base
+   ```
+
+2. **Clone & Install**
+
+   ```bash
+   git clone <your-new-repo-url> my-app
    cd my-app
    pip install -r requirements.txt
    ```
 
-2. **Set Basic Info**
+3. **Set Basic Info**
 
    ```bash
    python scripts/set_app_info.py --name "My App" --version "1.0.0"
    ```
 
-3. **Generate Main Controller & UI**
+4. **Generate Main Controller & UI**
 
    ```bash
-   python scripts/generate.py controller Main
+   python scripts/generate.py controller YourController
    python scripts/compile_ui.py
    ```
 
@@ -79,12 +84,19 @@ Get your app skeleton ready with the right mindset:
 ```
 base/
 ├── core/             # Framework & template patterns
-├── windows/          # Controllers + UI (.ui files + handlers)
+├── windows/          # Views, controllers and event handlers
+│   ├── components/   # Reusable UI components (widgets)
+│   └── main/         # Main window
 ├── services/         # Independent business logic
-├── components/       # Reusable UI components
+├── models/           # Reusable UI components
 ├── scripts/          # CLI tools & scaffolding
-├── plugins/          # Application extensions
-└── data/             # Configurations, logs, assets
+├── assets/           # Resources (images, sounds, translations)
+│   └── icon.png      # Default application icon
+├── data/             # User data and embedded app data
+│   ├── config/       # Configuration files
+│   └── logs/         # Log files
+├── vendor/           # Third-party resources
+└── plugins/          # App plugins
 ```
 
 > **Mindset**: Each folder is an independent module, easy to test, develop in parallel, and swap without affecting the
@@ -100,9 +112,18 @@ base/
 * **Handler (Subscriber)** listens for events, processes them, and responds, completely decoupled from UI concerns.
 
 ```python
-self.slot_map = {
-   'open_btn_click': ['pushButton', 'clicked']
-}
+# in controller
+class MyController(BaseController):
+   # Mapping show: when `pushButton` has been `clicked`. The method named `on_open_btn_click` on handler will be called
+   slot_map = {
+      'open_btn_click': ['pushButton', 'clicked']
+   }
+
+# in handler
+class MyControllerHandler(Subscriber):
+   def on_open_btn_click(self, data = None):
+      # Event handling logic
+      pass
 ```
 
 > **Mindset**: Keep business logic out of UI events—Controllers merely proxy events.
@@ -125,9 +146,9 @@ class MyService:
 
 ---
 
-### Component & Widget Manager: Reusable & Stateful
+### Widget Manager: Reusable & Stateful
 
-* **BaseComponent** encapsulates UI fragments into standalone components.
+
 * **WidgetManager** provides dot-notation access, suppresses signals during updates, and auto-saves configuration.
 
 ```python
@@ -164,6 +185,8 @@ python scripts/generate.py service MyService
 ```
 
 > **Mindset**: Enforce naming and structure conventions, reduce boilerplate time.
+> 
+For full list scripts/commands. See [CLI.md](./docs/CLI.md)
 
 ---
 

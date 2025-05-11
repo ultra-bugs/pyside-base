@@ -1,145 +1,162 @@
 # UltraBugz pyside_base - Desktop application ship faster
 
-**Base Qt Application với PySide6 — Mindset Truyền Cảm Hứng**
-Codebase này không chỉ là một bộ khung code, mà còn là cách tư duy trong phát triển phần mềm: phân tách rõ ràng trách
-nhiệm, tận dụng sức mạnh của Observer Pattern, và tự động hóa quy trình để bạn tập trung vào sáng tạo. Mỗi dòng code ở
-đây được xây dựng để khuyến khích sự linh hoạt, tái sử dụng và mở rộng về lâu dài.
+> Cũng có bản English cho [README](./README.md) này. Bản Tiếng Việt này được dịch  động.
+> 
+
+## Tư Duy Truyền Cảm Hứng
+
+Ứng dụng Qt cơ bản này không chỉ là một bộ khung mã nguồn mà còn là một tư duy trong phát triển phần mềm: phân tách rõ ràng trách nhiệm, tận dụng Mẫu Thiết Kế Observer, và tự động hóa quy trình làm việc để bạn có thể tập trung vào sự sáng tạo. Mỗi dòng mã đều được thiết kế để khuyến khích sự linh hoạt, tái sử dụng và khả năng mở rộng lâu dài.
 
 ---
 
-## 1. Mục lục
+## 1. Mục Lục
 
-1. [Tư duy & Triết lý](#tu-duy--triet-ly)
-2. [Khởi tạo dự án](#khoi-tao-du-an)
-3. [Cấu trúc & Tinh thần Modular](#cau-truc--tinh-than-modular)
-4. [Các thành phần chính & Mindset](#cac-thanh-phan-chinh--mindset)
+1. [Triết Lý & Tư Duy](#philosophy--mindset)
+2. [Khởi Tạo Dự Án](#project-initialization)
+3. [Cấu Trúc & Tinh Thần Module](#structure--modular-spirit)
+4. [Thành Phần Cốt Lõi & Tư Duy](#core-components--mindset)
 
-    * Controller & Handler: Tách UI và sự kiện
-    * Service: Logic thuần, không vướng UI
-    * Component & Widget Manager: Tái sử dụng, duy trì trạng thái
-    * Task System & Middleware: Tự động hóa, không block UI
-5. [CLI Scaffolding: Tốc độ & Nhất quán](#cli-scaffolding-toc-do--nhat-quan)
-6. [Theme & Cấu hình: Tự phục vụ](#theme--cau-hinh-tu-phuc-vu)
-7. [Observer Pattern: Giao tiếp không coupling](#observer-pattern-giao-tiep-khong-coupling)
-8. [Best Practices & Triết lý Coding](#best-practices--triet-ly-coding)
-9. [Đóng góp](#dong-gop)
-10. [License](#license)
+   * Controller & Handler: Tách biệt UI và sự kiện
+   * Service: Logic thuần, không phụ thuộc UI
+   * Component & Quản lý Widget: Có trạng thái, tái sử dụng
+   * Hệ thống Task & Middleware: Tự động hóa, không chặn UI
+5. [CLI Scaffolding: Nhanh & Đồng Nhất](#cli-scaffolding-speed--consistency)
+6. [Giao Diện & Cấu Hình: Tự Điều Chỉnh](#theme--configuration-self-service)
+7. [Observer Pattern: Giao Tiếp Tách Biệt](#observer-pattern-decoupled-communication)
+8. [Thực Hành Tốt & Triết Lý Code](#best-practices--coding-philosophy)
+9. [Đóng Góp](#contributing)
+10. [Giấy Phép](#license-1)
 
-Ngoài ra cũng còn những phần khác cũng có tài liệu. Xem ở [docs](./docs).
-
----
-
-## Tư duy & Triết lý
-
-1. **Separation of Concerns**: Mỗi module chỉ làm một việc duy nhất — UI chỉ hiển thị, Service chỉ xử lý logic, Handler
-   chỉ phản hồi sự kiện. Giúp code dễ bảo trì và mở rộng.
-2. **Automation First**: Task System và CLI scaffolding giúp bạn đẩy nhanh tiến độ, giảm lỗi thủ công và tập trung vào
-   giải thuật chính.
-3. **Observer Pattern**: Giảm coupling giữa các lớp, các component giao tiếp qua sự kiện, đảm bảo tính mở rộng và khả
-   năng thay đổi linh hoạt.
-4. **Modularity & Reusability**: Tất cả đều là plugin hoặc component nhỏ, dễ thay thế, dễ test, và có thể tái sử dụng ở
-   các dự án khác.
+Các thành phần khác cũng được tài liệu hóa thêm. Xem tại [Docs](./docs).
 
 ---
 
-## Khởi tạo dự án
+## Triết Lý & Tư Duy
 
-Nhanh chóng tạo dựng khung ứng dụng với mindset:
+1. **Phân Tách Nhiệm Vụ Rõ Ràng**: Mỗi module có một nhiệm vụ duy nhất — UI hiển thị, Service xử lý logic, Handler phản hồi sự kiện. Điều này giúp mã dễ bảo trì và mở rộng.
+2. **Tự Động Hóa Là Ưu Tiên**: Hệ thống Task và công cụ CLI giúp tăng tốc phát triển, giảm lỗi thủ công, và tập trung vào thuật toán cốt lõi.
+3. **Mẫu Observer**: Giảm liên kết giữa các lớp; các thành phần giao tiếp qua sự kiện, dễ mở rộng và thay đổi linh hoạt.
+4. **Module Hóa & Tái Sử Dụng**: Mọi thứ là plugin hoặc component nhỏ — dễ thay thế, kiểm thử và sử dụng lại giữa các dự án.
 
-1. **Clone & Cài đặt**
+---
+
+## Khởi Tạo Dự Án
+
+Chuẩn bị khung ứng dụng với tư duy đúng:
+
+1. Sử dụng template:
 
    ```bash
-   git clone https://github.com/MyL1nk/ccpy.git my-app
+   gh repo create my-app --template=https://github.com/ultra-bugs/pyside-base
+   ```
+
+2. **Clone & Cài đặt**
+
+   ```bash
+   git clone <your-new-repo-url> my-app
    cd my-app
    pip install -r requirements.txt
    ```
 
-2. **Cấu hình thông tin cơ bản**
+3. **Cài Đặt Thông Tin Cơ Bản**
 
    ```bash
    python scripts/set_app_info.py --name "My App" --version "1.0.0"
    ```
 
-3. **Tạo Controller chính và UI**
+4. **Tạo Controller Chính & UI**
 
    ```bash
-   python scripts/generate.py controller Main
+   python scripts/generate.py controller YourController
    python scripts/compile_ui.py
    ```
 
-> **Mindset**: Tự động hoá quy trình thiết lập, tiết kiệm thời gian, đảm bảo mọi dự án bắt đầu với cấu trúc chuẩn.
+> **Tư Duy**: Tự động hóa khởi tạo, tiết kiệm thời gian, đảm bảo cấu trúc đồng nhất cho mọi dự án.
 
 ---
 
-## Cấu trúc & Tinh thần Modular
+## Cấu Trúc & Tinh Thần Module
 
 ```
 base/
-├── core/             # Nền tảng, template pattern
-├── windows/          # Controller + UI (.ui + handlers)
-├── services/         # Business logic độc lập
-├── components/       # UI components tái sử dụng
-├── scripts/          # CLI scaffolding & công cụ
-├── plugins/          # Mở rộng năng lực ứng dụng
-└── data/             # Cấu hình, logs, resources
+├── core/             # Framework & mẫu thiết kế
+├── windows/          # View, controller và xử lý sự kiện
+│   ├── components/   # Thành phần UI có thể tái sử dụng (widget)
+│   └── main/         # Cửa sổ chính
+├── services/         # Logic nghiệp vụ độc lập
+├── models/           # Mô hình dữ liệu UI tái sử dụng
+├── scripts/          # Công cụ CLI & scaffolding
+├── assets/           # Tài nguyên (ảnh, âm thanh, bản dịch)
+│   └── icon.png      # Biểu tượng mặc định
+├── data/             # Dữ liệu người dùng và dữ liệu nhúng của ứng dụng
+│   ├── config/       # Tập tin cấu hình
+│   └── logs/         # Tập tin log
+├── vendor/           # Tài nguyên bên thứ ba
+└── plugins/          # Plugin cho ứng dụng
 ```
 
-> **Mindset**: Mỗi thư mục là một thành phần độc lập, dễ test, dễ phát triển song song, và có thể được thay thế mà không
-> ảnh hưởng hệ thống.
+> **Tư Duy**: Mỗi thư mục là một module độc lập, dễ kiểm thử, phát triển song song, và thay thế mà không ảnh hưởng hệ thống.
 
 ---
 
-## Các thành phần chính & Mindset
+## Thành Phần Cốt Lõi & Tư Duy
 
-### Controller & Handler: Tách UI và sự kiện
+### Controller & Handler: Tách UI và Sự Kiện
 
-* **Controller** chỉ kết nối UI và map các signal đến handler qua `slot_map`. Giao tiếp giản lược, không trực tiếp gọi
-  logic.
-* **Handler (Subscriber)** lắng nghe sự kiện, xử lý và phản hồi, hoàn toàn tách rời với câu chuyện UI.
+* **Controller** kết nối UI với sự kiện qua `slot_map`, không chứa logic nghiệp vụ.
+* **Handler (Subscriber)** lắng nghe sự kiện, xử lý và phản hồi, tách biệt hoàn toàn khỏi UI.
 
 ```python
-self.slot_map = {
-    'open_btn_click': ['pushButton', 'clicked']
-}
+# trong controller
+class MyController(BaseController):
+   # Bản ánh xạ hiển thị: khi `pushButton` được `clicked`
+   # phương thức có tên `on_open_btn_click` trong handler sẽ được gọi
+
+   slot_map = {
+      'open_btn_click': ['pushButton', 'clicked']
+   }
+
+# trong handler
+class MyControllerHandler(Subscriber):
+   def on_open_btn_click(self, data = None):
+      pass
 ```
 
-> **Mindset**: Không viết code xử lý business trong sự kiện UI, giữ cho Controller gọn, chỉ chuyển tiếp sự kiện.
+> **Tư Duy**: Không đưa logic nghiệp vụ vào sự kiện UI — Controller chỉ làm cầu nối.
 
 ---
 
-### Service: Logic thuần
+### Service: Logic Thuần
 
-* Nhận đầu vào, xử lý, trả kết quả, không biết gì về giao diện.
-* Có thể test riêng bằng unit test, reuse ở nhiều nơi.
+* Nhận đầu vào, xử lý và trả kết quả — không biết gì về UI.
+* Có thể kiểm thử đơn vị và tái sử dụng.
 
 ```python
 class MyService:
-    def fetch_data(self) -> List[Dict]:
-        # Xử lý dữ liệu
-        return []
+   def fetch_data(self) -> List[Dict]:
+      return []
 ```
 
-> **Mindset**: Xây dựng service như microservice nhỏ trong repo, độc lập, dễ bảo trì.
+> **Tư Duy**: Mỗi service là một microservice — độc lập và dễ bảo trì.
 
 ---
 
-### Component & Widget Manager: Tái sử dụng, duy trì trạng thái
+### Quản Lý Widget: Có Trạng Thái & Tái Sử Dụng
 
-* **BaseComponent**: Đóng gói UI fragment thành component riêng biệt.
-* **WidgetManager**: Dot-notation truy cập widget, suppress signals khi cập nhật, lưu cấu hình tự động.
+* **WidgetManager** truy cập bằng dấu chấm, ngăn chặn tín hiệu khi cập nhật, và tự lưu cấu hình.
 
 ```python
 widget_manager.set('slider.value', 50, save_to_config=True)
 ```
 
-> **Mindset**: Mỗi component phải có trách nhiệm rõ ràng, state quản lý tập trung, tránh side-effect.
+> **Tư Duy**: Mỗi component có trách nhiệm rõ ràng, trạng thái được quản lý tập trung để tránh tác dụng phụ.
 
 ---
 
-### Task System & Middleware: Tự động hóa, không block UI
+### Hệ Thống Task & Middleware: Tự Động Hóa & Không Chặn UI
 
-* Hỗ trợ đa luồng, scheduling, middleware chainable.
-* Tách các bước công việc thành `TaskStep`, dễ theo dõi, retry, captcha, logging.
+* Hỗ trợ đa luồng, lập lịch, middleware chuỗi.
+* Quy trình công việc được chia thành `TaskStep` để dễ theo dõi, thử lại, log, và xử lý captcha.
 
 ```python
 task = task_manager.create_task("SyncData")
@@ -148,67 +165,68 @@ task.add_step(ProcessStep())
 task_manager.run_task(task)
 ```
 
-> **Mindset**: Tất cả tác vụ nặng kéo dài đều chạy nền, UI luôn phản hồi nhanh.
+> **Tư Duy**: Đưa tác vụ nặng ra nền; giữ UI luôn mượt mà.
 
 ---
 
-## CLI Scaffolding: Tốc độ & Nhất quán
+## CLI Scaffolding: Nhanh & Đồng Nhất
 
-Tạo nhanh Controller, Service, Component, Task/Step chỉ với một lệnh:
+Tạo nhanh Controller, Service, Component, Task, và Step chỉ với một lệnh:
 
 ```bash
 python scripts/generate.py controller MyController
 python scripts/generate.py service MyService
 ```
 
-> **Mindset**: Đồng bộ cách đặt tên, cấu trúc folder, giảm thời gian boilerplate.
+> **Tư Duy**: Cưỡng chế quy tắc đặt tên và cấu trúc, giảm thời gian viết mã mẫu.
+
+Xem thêm tại [CLI.md](./docs/CLI.md)
 
 ---
 
-## Theme & Cấu hình: Tự phục vụ
+## Giao Diện & Cấu Hình: Tự Điều Chỉnh
 
-Sử dụng `qdarktheme` với lựa chọn `auto | light | dark`. Cấu hình dễ dàng qua `Config`.
+Sử dụng `qdarktheme` với các chế độ `auto | light | dark`. Cấu hình qua lớp `Config`.
 
 ```python
 config.set('ui.theme', 'dark')
 qdarktheme.setup_theme(config.get('ui.theme'))
 ```
 
-> **Mindset**: Người dùng cuối và developer đều có quyền tuỳ chỉnh, không hardcode giao diện.
+> **Tư Duy**: Cho phép người dùng và lập trình viên tự tùy chỉnh, không cần mã hóa cứng.
 
 ---
 
-## Observer Pattern: Giao tiếp không coupling
+## Mẫu Observer: Giao Tiếp Tách Biệt
 
-* **Publisher**: Singleton, kết nối Qt signals vào hệ thống event chung.
-* **Subscriber (Handler)**: Đăng ký `on_<event_name>`, dễ thêm/xóa listener mà không sửa controller.
+* **Publisher**: Singleton kết nối Qt signals vào hệ thống sự kiện thống nhất.
+* **Subscriber (Handler)**: Đăng ký các phương thức `on_<event_name>` — thêm/xóa listener mà không chạm vào Controller.
 
 ```python
 def on_button_clicked(self, data = None):
-    # Xử lý sự kiện
-    pass
+   pass
 ```
 
-> **Mindset**: Module không biết về nhau, chỉ biết giao tiếp qua event, giúp hệ thống mở rộng dễ dàng.
+> **Tư Duy**: Module chỉ biết sự kiện, không biết nhau — dễ mở rộng hệ thống.
 
 ---
 
-## Best Practices & Triết lý Coding
+## Thực Hành Tốt & Triết Lý Code
 
-1. **Single Responsibility**: Mỗi file, mỗi class chỉ có một lý do để thay đổi.
-2. **Testable**: Service và Middleware nên có unit test riêng.
-3. **Config-driven**: Thay đổi behavior qua config, không sửa code.
-4. **Logging & Error Handling**: Middleware bắt lỗi, retry logic, log rõ context.
-5. **Documentation**: Mỗi component, service, CLI command đều có help rõ ràng.
-
----
-
-## Đóng góp
-
-Rất hoan nghênh PR và Issue! Vui lòng đọc `CONTRIBUTING.md` để hiểu quy trình.
+1. **Trách Nhiệm Duy Nhất**: Mỗi file và lớp chỉ có một lý do để thay đổi.
+2. **Có Thể Kiểm Thử**: Viết test đơn vị cho Service và Middleware.
+3. **Cấu Hình Điều Khiển**: Thay đổi hành vi qua cấu hình, không chỉnh mã nguồn.
+4. **Ghi Log & Xử Lý Lỗi**: Dùng middleware để ghi lỗi, thử lại và log theo ngữ cảnh.
+5. **Tài Liệu**: Cung cấp hướng dẫn rõ ràng cho mỗi component, service và lệnh CLI.
 
 ---
 
-## License
+## Đóng Góp
 
-Bản quyền dưới MIT License. Xin trích nguyên văn `LICENSE` để xem chi tiết.
+Hoan nghênh đóng góp! Vui lòng đọc `CONTRIBUTING.md` để biết hướng dẫn.
+
+---
+
+## Giấy Phép
+
+Phát hành theo giấy phép MIT. Xem file `LICENSE` để biết chi tiết.
