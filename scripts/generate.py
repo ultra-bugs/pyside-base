@@ -38,14 +38,9 @@ class {name}Controller(BaseController):
 
 class {name}Handler(Subscriber):
     def __init__(self, widget_manager, events):
-        super().__init__(events)
         self.widget_manager = widget_manager
         self.controller = widget_manager.controller
-        events = [
-            # Add your events here
-        ]
         super().__init__(events)
-        
     # Add your event handlers here
     # def on_event_name(self, data=None):
     #     pass
