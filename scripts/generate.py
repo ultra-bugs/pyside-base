@@ -37,8 +37,10 @@ class {name}Controller(BaseController):
     'handler': '''from core import Subscriber
 
 class {name}Handler(Subscriber):
-    def __init__(self, controller):
-        self.controller = controller
+    def __init__(self, widget_manager, events):
+        super().__init__(events)
+        self.widget_manager = widget_manager
+        self.controller = widget_manager.controller
         events = [
             # Add your events here
         ]
