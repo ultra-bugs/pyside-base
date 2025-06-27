@@ -21,13 +21,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Set Repository URL
+      - name: Set Repository URL ENV
         run: echo "REPO_URL=${GITHUB_REPOSITORY}" >> $GITHUB_ENV
 
-      - name: Cleanup
+      - name: Cleanup then commit
         run: |
           # Remove template-specific files
           rm -rf .github/workflows/template-cleanup.yml
+          rm -rf .cursor
+          rm -rf .cursorrules
           # Update README
           sed -i "s|<your-new-repo-url>|${REPO_URL}|g" README.md
           sed -i "s|<your-new-repo-url>|${REPO_URL}|g" README.vi.md
