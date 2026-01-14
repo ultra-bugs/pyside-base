@@ -11,7 +11,6 @@
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-
 import time
 from typing import Any, Dict
 
@@ -35,7 +34,7 @@ class LoopDemoTask(AbstractTask):
             if self.isStopped():
                 return
             pct = int(((i + 1) / self.loopCount) * 100)
-            self._logger.info(f"{self.name}: iteration {i + 1}/{self.loopCount}")
+            self._logger.info(f'{self.name}: iteration {i + 1}/{self.loopCount}')
             self.setProgress(min(99, pct))
             time.sleep(self.delaySeconds)
         self.setProgress(100)

@@ -6,6 +6,7 @@ from core.QtAppContext import QtAppContext
 from core.Logging import logger
 from app.tasks import SimpleDemoTask, ConditionDemoTask, LoopDemoTask, SleepDemoTask, CpuIntensiveDemoTask, AdbCommandTask, ChainDemoTask
 
+
 class MainHandler(Subscriber):
     """Handler for main window events"""
 
@@ -57,7 +58,7 @@ class MainHandler(Subscriber):
             task = SleepDemoTask(name=f'Concurrent Task {i + 1}', description=f'Sleeps for {duration}s', durationSeconds=duration)
             self.taskManager.addTask(task)
         qs = self.taskManager.getQueueStatus()
-        self.controller.logMessage(f"Started {taskCount} concurrent tasks. Running: {qs.get('running', 0)}/{qs.get('maxConcurrent', 0)} (pending: {qs.get('pending', 0)})")
+        self.controller.logMessage(f'Started {taskCount} concurrent tasks. Running: {qs.get("running", 0)}/{qs.get("maxConcurrent", 0)} (pending: {qs.get("pending", 0)})')
 
     def onCreateCpuIntensiveTask(self, data=None):
         """Create a CPU-intensive demo task and enqueue it."""

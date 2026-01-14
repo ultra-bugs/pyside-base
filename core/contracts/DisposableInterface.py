@@ -11,14 +11,15 @@
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-
 from abc import ABC, abstractmethod
+
 
 class DisposableInterface(ABC):
     """
     Interface for objects that hold resources (DB connections, open files, sockets)
     and need explicit cleanup before destruction.
     """
+
     @abstractmethod
     def cleanup(self):
         """Release resources here."""

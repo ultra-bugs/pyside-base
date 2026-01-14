@@ -4,8 +4,10 @@ from PySide6.QtCore import QMutex, QMutexLocker
 from core.Exceptions import ConfigError
 from core.Utils import PathHelper
 
+
 class Config:
     """Configuration manager"""
+
     _instance = None
     _config: Dict[str, Any] = {}
 
@@ -19,7 +21,7 @@ class Config:
     def __init__(self):
         self.isLoaded = False
 
-    def __call__(self, key: str=None) -> 'Any':
+    def __call__(self, key: str = None) -> 'Any':
         return self.get(key) if key else self
 
     def _setup(self):
@@ -60,7 +62,7 @@ class Config:
             logger.error(f'Failed to save configuration: {e}')
             raise ConfigError(f'Failed to save configuration: {e}')
 
-    def get(self, key: str, default: Any=None) -> Any:
+    def get(self, key: str, default: Any = None) -> Any:
         """Get a configuration value"""
         locker = QMutexLocker(self._lock)
         try:
@@ -89,7 +91,12 @@ class Config:
 
     def _create_default_config(self) -> None:
         """Create default configuration"""
-        defaultConfig = {'app': {'name': 'Base Qt Application', 'version': '1.0.0', 'debug': False}, 'ui': {'theme': 'auto', 'language': 'en', 'high_dpi': True}, 'logging': {'level': 'INFO', 'file': 'app.log'}, 'consolelog': {'enable': True, 'level': 'DEBUG'}}
+        defaultConfig = {
+            'app': {'name': 'Base Qt Application', 'version': '1.0.0', 'debug': False},
+            'ui': {'theme': 'auto', 'language': 'en', 'high_dpi': True},
+            'logging': {'level': 'INFO', 'file': 'app.log'},
+            'consolelog': {'enable': True, 'level': 'DEBUG'},
+        }
         locker = QMutexLocker(self._lock)
         self._config = defaultConfig
         locker.unlock()

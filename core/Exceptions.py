@@ -3,35 +3,46 @@ from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QApplication
 
+
 class AppException(Exception):
     """Base exception class for application"""
 
-    def __init__(self, message: str, title: str='Error'):
+    def __init__(self, message: str, title: str = 'Error'):
         self.title = title
         super().__init__(message)
 
+
 class ConfigError(AppException):
     """Raised when there is a configuration error"""
+
     pass
+
 
 class ServiceError(AppException):
     """Raised when there is a service error"""
+
     pass
+
 
 class UIError(AppException):
     """Raised when there is a UI error"""
+
     pass
+
 
 class ExceptionEvent(QObject):
     """Event object for exceptions"""
+
     raised = Signal(Exception)
 
     def __init__(self, exception: Exception):
         super().__init__()
         self.exception = exception
 
+
 class ExceptionHandler:
     """Handles all exceptions in the application"""
+
     _instance = None
     _excludes = (SystemExit, KeyboardInterrupt)
 
@@ -88,7 +99,6 @@ class ExceptionHandler:
     def setupGlobalHandler(cls=None):
         """Setup global exception handler"""
         import sys
-
         def globalExceptionHandler(exctype, value, traceback):
             """Global exception handler"""
             isHandled = False

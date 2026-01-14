@@ -4,17 +4,20 @@ ChainDemoTask
 A sample task demonstrating Task Chaining capabilities.
 This task creates a chain of sub-tasks that share data via ChainContext.
 """
+
 from typing import Any, Dict, List, Optional
 import time
 import random
 from core.taskSystem import AbstractTask, TaskStatus, TaskChain, ChainRetryBehavior
 from core.Logging import logger
+
 logger = logger.bind(component='TaskSystem')
+
 
 class DataGeneratorTask(AbstractTask):
     """Generates random data and stores it in ChainContext."""
 
-    def __init__(self, name: str='Data Generator', count: int=5, **kwargs):
+    def __init__(self, name: str = 'Data Generator', count: int = 5, **kwargs):
         super().__init__(name=name, **kwargs)
         self.count = count
 
@@ -35,12 +38,21 @@ class DataGeneratorTask(AbstractTask):
 
     @classmethod
     def deserialize(cls, data: Dict[str, Any]) -> 'DataGeneratorTask':
-        return cls(name=data['name'], count=data.get('count', 5), isPersistent=data.get('isPersistent', False), maxRetries=data.get('maxRetries', 0), retryDelaySeconds=data.get('retryDelaySeconds', 5), failSilently=data.get('failSilently', False), chainUuid=data.get('chainUuid'))
+        return cls(
+            name=data['name'],
+            count=data.get('count', 5),
+            isPersistent=data.get('isPersistent', False),
+            maxRetries=data.get('maxRetries', 0),
+            retryDelaySeconds=data.get('retryDelaySeconds', 5),
+            failSilently=data.get('failSilently', False),
+            chainUuid=data.get('chainUuid'),
+        )
+
 
 class DataProcessorTask(AbstractTask):
     """Retrieves data from ChainContext, processes it, and stores result."""
 
-    def __init__(self, name: str='Data Processor', multiplier: int=2, **kwargs):
+    def __init__(self, name: str = 'Data Processor', multiplier: int = 2, **kwargs):
         super().__init__(name=name, **kwargs)
         self.multiplier = multiplier
 
@@ -73,12 +85,21 @@ class DataProcessorTask(AbstractTask):
 
     @classmethod
     def deserialize(cls, data: Dict[str, Any]) -> 'DataProcessorTask':
-        return cls(name=data['name'], multiplier=data.get('multiplier', 2), isPersistent=data.get('isPersistent', False), maxRetries=data.get('maxRetries', 0), retryDelaySeconds=data.get('retryDelaySeconds', 5), failSilently=data.get('failSilently', False), chainUuid=data.get('chainUuid'))
+        return cls(
+            name=data['name'],
+            multiplier=data.get('multiplier', 2),
+            isPersistent=data.get('isPersistent', False),
+            maxRetries=data.get('maxRetries', 0),
+            retryDelaySeconds=data.get('retryDelaySeconds', 5),
+            failSilently=data.get('failSilently', False),
+            chainUuid=data.get('chainUuid'),
+        )
+
 
 class FlakyTask(AbstractTask):
     """A task that randomly fails to demonstrate retry behavior."""
 
-    def __init__(self, name: str='Flaky Task', failureRate: float=0.5, **kwargs):
+    def __init__(self, name: str = 'Flaky Task', failureRate: float = 0.5, **kwargs):
         super().__init__(name=name, **kwargs)
         self.failureRate = failureRate
 
@@ -96,12 +117,21 @@ class FlakyTask(AbstractTask):
 
     @classmethod
     def deserialize(cls, data: Dict[str, Any]) -> 'FlakyTask':
-        return cls(name=data['name'], failureRate=data.get('failure_rate', 0.5), isPersistent=data.get('isPersistent', False), maxRetries=data.get('maxRetries', 0), retryDelaySeconds=data.get('retryDelaySeconds', 5), failSilently=data.get('failSilently', False), chainUuid=data.get('chainUuid'))
+        return cls(
+            name=data['name'],
+            failureRate=data.get('failure_rate', 0.5),
+            isPersistent=data.get('isPersistent', False),
+            maxRetries=data.get('maxRetries', 0),
+            retryDelaySeconds=data.get('retryDelaySeconds', 5),
+            failSilently=data.get('failSilently', False),
+            chainUuid=data.get('chainUuid'),
+        )
+
 
 class ConsistentlyFailingTask(AbstractTask):
     """A task that fails a specific number of times before succeeding."""
 
-    def __init__(self, name: str='Failing Task', failuresBeforeSuccess: int=2, **kwargs):
+    def __init__(self, name: str = 'Failing Task', failuresBeforeSuccess: int = 2, **kwargs):
         super().__init__(name=name, **kwargs)
         self.failuresBeforeSuccess = failuresBeforeSuccess
         self._attempts = 0
@@ -121,15 +151,24 @@ class ConsistentlyFailingTask(AbstractTask):
 
     @classmethod
     def deserialize(cls, data: Dict[str, Any]) -> 'ConsistentlyFailingTask':
-        task = cls(name=data['name'], failuresBeforeSuccess=data.get('failures_before_success', 2), isPersistent=data.get('isPersistent', False), maxRetries=data.get('maxRetries', 0), retryDelaySeconds=data.get('retryDelaySeconds', 5), failSilently=data.get('failSilently', False), chainUuid=data.get('chainUuid'))
+        task = cls(
+            name=data['name'],
+            failuresBeforeSuccess=data.get('failures_before_success', 2),
+            isPersistent=data.get('isPersistent', False),
+            maxRetries=data.get('maxRetries', 0),
+            retryDelaySeconds=data.get('retryDelaySeconds', 5),
+            failSilently=data.get('failSilently', False),
+            chainUuid=data.get('chainUuid'),
+        )
         task._attempts = data.get('_attempts', 0)
         return task
+
 
 class ChainDemoTask:
     """Factory for creating demo chains."""
 
     @staticmethod
-    def createDemoChain(name: str='Demo Chain') -> TaskChain:
+    def createDemoChain(name: str = 'Demo Chain') -> TaskChain:
         """
         Creates a sample chain with:
         1. DataGeneratorTask
@@ -144,7 +183,7 @@ class ChainDemoTask:
         return chain
 
     @staticmethod
-    def createRetryDemoChain(name: str='Retry Demo Chain') -> TaskChain:
+    def createRetryDemoChain(name: str = 'Retry Demo Chain') -> TaskChain:
         """
         Creates a chain to demonstrate auto-retry and delayed retry.
         1. ConsistentlyFailingTask: Fails twice, succeeds on the third try (task-level retry).
@@ -154,5 +193,12 @@ class ChainDemoTask:
         task2 = FlakyTask(name='Step 2: Chain-Retry Task', failureRate=0.8, maxRetries=0, retryDelaySeconds=5)
         task3 = DataGeneratorTask(name='Step 3: Final Step', count=3)
         retryMap = {'FlakyTask': ChainRetryBehavior.RETRY_CHAIN, 'ConsistentlyFailingTask': ChainRetryBehavior.RETRY_TASK}
-        chain = TaskChain(name=name, tasks=[task1, task2, task3], description='Demonstrates task-level and chain-level retries with delays.', retryBehaviorMap=retryMap, maxRetries=2, retryDelaySeconds=5)
+        chain = TaskChain(
+            name=name,
+            tasks=[task1, task2, task3],
+            description='Demonstrates task-level and chain-level retries with delays.',
+            retryBehaviorMap=retryMap,
+            maxRetries=2,
+            retryDelaySeconds=5,
+        )
         return chain

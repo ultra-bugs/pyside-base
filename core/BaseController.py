@@ -6,6 +6,7 @@ from box import Box
 from core.Observer import Publisher
 from core.WidgetManager import WidgetManager
 
+
 class ControllerMeta(type(QtCore.QObject), type(ABC)):
     required_attrs = ['slot_map']
 
@@ -27,8 +28,10 @@ class ControllerMeta(type(QtCore.QObject), type(ABC)):
         klass.slot_map = Box(combined_slotmap)
         return klass
 
+
 class BaseController(metaclass=ControllerMeta):
     """Base class for all controllers"""
+
     slot_map: Dict[str, List[str]] = {}
     signal_connected = False
     is_auto_connect_signal = True

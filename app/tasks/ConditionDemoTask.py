@@ -11,7 +11,6 @@
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-
 import time
 from typing import Any, Dict
 
@@ -28,17 +27,17 @@ class ConditionDemoTask(AbstractTask):
         self._logger = logger.bind(component='TaskSystem')
 
     def handle(self) -> None:
-        self._logger.info(f"{self.name}: evaluating condition = {self.testCondition}")
+        self._logger.info(f'{self.name}: evaluating condition = {self.testCondition}')
         self.setProgress(10)
         time.sleep(0.1)
         if self.isStopped():
             return
         if self.testCondition:
-            self._logger.info("Condition is TRUE")
-            self.result = { 'result': 'Success' }
+            self._logger.info('Condition is TRUE')
+            self.result = {'result': 'Success'}
         else:
-            self._logger.info("Condition is FALSE")
-            self.result = { 'result': 'Failed' }
+            self._logger.info('Condition is FALSE')
+            self.result = {'result': 'Failed'}
         self.setProgress(100)
 
     def _performCancellationCleanup(self) -> None:

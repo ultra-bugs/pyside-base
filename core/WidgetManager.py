@@ -2,6 +2,7 @@ from typing import Callable, Union
 from PySide6.QtCore import QCoreApplication, QObject
 from PySide6.QtWidgets import QApplication, QCheckBox, QDoubleSpinBox, QLabel, QLineEdit, QRadioButton, QSpinBox, QTableView, QTableWidget, QTextEdit, QWidget
 
+
 class WidgetManager:
     """Manages widgets in controllers and UI components
 
@@ -38,7 +39,7 @@ class WidgetManager:
         currentParent = self.controller
         for key in keys:
             if not hasattr(currentParent, key):
-                raise Exception(f"Widget {key} not found in {self.controller}.\nWas resolved: {'.'.join(resolved)}")
+                raise Exception(f'Widget {key} not found in {self.controller}.\nWas resolved: {".".join(resolved)}')
             attr = getattr(currentParent, key)
             if key != keys[-1]:
                 resolved.append(key)
@@ -51,7 +52,7 @@ class WidgetManager:
                     return attr
             return attr
 
-    def set(self, name: str, value, saveToConfig: bool=False) -> None:
+    def set(self, name: str, value, saveToConfig: bool = False) -> None:
         """Set a widget attribute value
         Args:
             name: Widget name

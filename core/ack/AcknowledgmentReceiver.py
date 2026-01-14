@@ -10,12 +10,14 @@ This abstract base class provides generic methods for:
 Subclasses must implement:
 - _do_emit_event(): How to emit events (Publisher, signals, etc.)
 """
+
 import uuid
 import time
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 from core.Logging import logger
 from .AcknowledgmentTracker import AcknowledgmentTracker
+
 
 class AcknowledgmentReceiver(ABC):
     """
@@ -26,7 +28,7 @@ class AcknowledgmentReceiver(ABC):
     - What resources need cleanup (browser, connections, etc.)
     """
 
-    def __init__(self, ackTracker: Optional[AcknowledgmentTracker]=None):
+    def __init__(self, ackTracker: Optional[AcknowledgmentTracker] = None):
         """
         Initialize receiver with optional shared tracker.
         Args:
@@ -44,7 +46,7 @@ class AcknowledgmentReceiver(ABC):
         """
         return f'ack_{uuid.uuid4().hex[:12]}'
 
-    def emitEventWithAck(self, eventName: str, timeout: float=30.0, **eventData) -> str:
+    def emitEventWithAck(self, eventName: str, timeout: float = 30.0, **eventData) -> str:
         """
         Emit event and register pending acknowledgment.
         Args:
@@ -82,7 +84,7 @@ class AcknowledgmentReceiver(ABC):
         """
         pass
 
-    def waitForAcknowledgments(self, timeout: float=60.0) -> bool:
+    def waitForAcknowledgments(self, timeout: float = 60.0) -> bool:
         """
         Block and wait for all pending acknowledgments.
         Args:

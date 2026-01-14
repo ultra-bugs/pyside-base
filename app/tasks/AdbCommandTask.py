@@ -11,7 +11,6 @@
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-
 import subprocess
 from typing import Any, Dict, List, Optional
 
@@ -22,14 +21,7 @@ from core.taskSystem.AbstractTask import AbstractTask
 class AdbCommandTask(AbstractTask):
     """Execute an ADB command and capture stdout/stderr/exit code."""
 
-    def __init__(
-        self,
-        name: str = 'ADB Command',
-        command: str = 'devices',
-        deviceSerial: Optional[str] = None,
-        timeoutSeconds: Optional[int] = None,
-        **kwargs,
-    ):
+    def __init__(self, name: str = 'ADB Command', command: str = 'devices', deviceSerial: Optional[str] = None, timeoutSeconds: Optional[int] = None, **kwargs):
         super().__init__(name=name, **kwargs)
         self.command = command
         self.timeoutSeconds = timeoutSeconds
@@ -47,29 +39,19 @@ class AdbCommandTask(AbstractTask):
 
     def handle(self) -> None:
         cmd = self._build_cmd()
-        self._logger.info(f"{self.name}: running -> {' '.join(cmd)}")
+        self._logger.info(f'{self.name}: running -> {" ".join(cmd)}')
         self.setProgress(5)
         try:
-            self._proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                shell=False,
-            )
+            self._proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=False)
             try:
                 out, err = self._proc.communicate(timeout=self.timeoutSeconds)
             except subprocess.TimeoutExpired:
-                self._logger.error(f"{self.name}: timeout after {self.timeoutSeconds}s; terminating")
+                self._logger.error(f'{self.name}: timeout after {self.timeoutSeconds}s; terminating')
                 self._proc.kill()
                 out, err = self._proc.communicate()
             rc = self._proc.returncode
-            self._logger.info(f"{self.name}: exit code {rc}")
-            self.result = {
-                'exitCode': rc,
-                'stdout': out,
-                'stderr': err,
-            }
+            self._logger.info(f'{self.name}: exit code {rc}')
+            self.result = {'exitCode': rc, 'stdout': out, 'stderr': err}
             # Progress to 100 when done
             self.setProgress(100)
             if rc != 0:
@@ -81,18 +63,14 @@ class AdbCommandTask(AbstractTask):
     def _performCancellationCleanup(self) -> None:
         if self._proc and self._proc.poll() is None:
             try:
-                self._logger.warning(f"{self.name}: cancelling → killing subprocess")
+                self._logger.warning(f'{self.name}: cancelling → killing subprocess')
                 self._proc.kill()
             except Exception as e:
-                self._logger.error(f"{self.name}: error killing subprocess: {e}")
+                self._logger.error(f'{self.name}: error killing subprocess: {e}')
 
     def serialize(self) -> Dict[str, Any]:
         data = super().serialize()
-        data.update({
-            'command': self.command,
-            'timeoutSeconds': self.timeoutSeconds,
-            'deviceSerial': self.deviceSerial,
-        })
+        data.update({'command': self.command, 'timeoutSeconds': self.timeoutSeconds, 'deviceSerial': self.deviceSerial})
         return data
 
     @classmethod

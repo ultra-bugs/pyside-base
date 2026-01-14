@@ -4,3 +4,16 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.13"
 dependencies = []
+
+[tool.ruff]
+line-length = 180
+include = ["core/**/*.py", "app/**/*.py", "scripts/*.py"]
+exclude = ["packages"]
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+docstring-code-format = true
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint]
+ignore = ["E301", "E302", "E303", "E305"]

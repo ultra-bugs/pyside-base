@@ -4,6 +4,7 @@ TaskChain
 Meta-task that executes multiple tasks sequentially with shared context.
 Supports retry behaviors, progress tracking, and persistence.
 """
+
 import importlib
 import time
 from typing import Any, Dict, List, Optional
@@ -13,7 +14,9 @@ from core.taskSystem.AbstractTask import AbstractTask, TaskFailedException
 from core.taskSystem.ChainContext import ChainContext
 from core.taskSystem.ChainRetryBehavior import ChainRetryBehavior
 from core.taskSystem.TaskStatus import TaskStatus
+
 logger = logger.bind(component='TaskSystem')
+
 
 class TaskChain(AbstractTask, Subscriber):
     """
@@ -36,7 +39,7 @@ class TaskChain(AbstractTask, Subscriber):
         _progress_updated_externally: Flag indicating external progress update
     """
 
-    def __init__(self, name: str, tasks: List[AbstractTask], description: str='', retryBehaviorMap: Optional[Dict[str, ChainRetryBehavior]]=None, **kwargs):
+    def __init__(self, name: str, tasks: List[AbstractTask], description: str = '', retryBehaviorMap: Optional[Dict[str, ChainRetryBehavior]] = None, **kwargs):
         """
         Initialize TaskChain.
         Args:
@@ -59,7 +62,7 @@ class TaskChain(AbstractTask, Subscriber):
         self._progress_updated_externally = False
         logger.info(f'TaskChain created: {self.uuid} - {self.name} with {len(tasks)} tasks')
 
-    def onChainProgressUpdateRequest(self, data: Optional[Dict[str, Any]]=None) -> None:
+    def onChainProgressUpdateRequest(self, data: Optional[Dict[str, Any]] = None) -> None:
         """
         Handle ChainProgressUpdateRequest event.
         Updates chain progress if the event is for this chain.
@@ -198,7 +201,19 @@ class TaskChain(AbstractTask, Subscriber):
         retryMapSerialized = {}
         for key, value in self.retryBehaviorMap.items():
             retryMapSerialized[key] = value.name
-        baseData.update({'tasks': serializedTasks, 'currentTaskIndex': self._currentTaskIndex, 'chainContext': self._chainContext.serialize(), 'taskStates': {uuid: {'status': state['status'].name if isinstance(state['status'], TaskStatus) else state['status'], 'result': state['result'], 'error': state['error']} for uuid, state in self._taskStates.items()}, 'retryBehaviorMap': retryMapSerialized, 'chainRetryAttempts': self._chainRetryAttempts})
+        baseData.update(
+            {
+                'tasks': serializedTasks,
+                'currentTaskIndex': self._currentTaskIndex,
+                'chainContext': self._chainContext.serialize(),
+                'taskStates': {
+                    uuid: {'status': state['status'].name if isinstance(state['status'], TaskStatus) else state['status'], 'result': state['result'], 'error': state['error']}
+                    for uuid, state in self._taskStates.items()
+                },
+                'retryBehaviorMap': retryMapSerialized,
+                'chainRetryAttempts': self._chainRetryAttempts,
+            }
+        )
         return baseData
 
     @classmethod
@@ -234,13 +249,26 @@ class TaskChain(AbstractTask, Subscriber):
             except KeyError:
                 logger.warning(f'Unknown retry behavior: {valueName}, using default')
                 retryMap[key] = ChainRetryBehavior.STOP_CHAIN
-        chain = cls(name=name, tasks=tasks, description=description, retryBehaviorMap=retryMap, isPersistent=data.get('isPersistent', False), maxRetries=data.get('maxRetries', 0), retryDelaySeconds=data.get('retryDelaySeconds', 5), failSilently=data.get('failSilently', False))
+        chain = cls(
+            name=name,
+            tasks=tasks,
+            description=description,
+            retryBehaviorMap=retryMap,
+            isPersistent=data.get('isPersistent', False),
+            maxRetries=data.get('maxRetries', 0),
+            retryDelaySeconds=data.get('retryDelaySeconds', 5),
+            failSilently=data.get('failSilently', False),
+        )
         chain._currentTaskIndex = data.get('currentTaskIndex', 0)
         chain._chainContext = ChainContext.deserialize(data.get('chainContext', {}))
         chain._chainRetryAttempts = data.get('chainRetryAttempts', 0)
         taskStatesData = data.get('taskStates', {})
         for uuid, stateData in taskStatesData.items():
-            chain._taskStates[uuid] = {'status': TaskStatus[stateData['status']] if isinstance(stateData['status'], str) else stateData['status'], 'result': stateData.get('result'), 'error': stateData.get('error', '')}
+            chain._taskStates[uuid] = {
+                'status': TaskStatus[stateData['status']] if isinstance(stateData['status'], str) else stateData['status'],
+                'result': stateData.get('result'),
+                'error': stateData.get('error', ''),
+            }
         chain.status = TaskStatus[data.get('status', 'PENDING')]
         chain.progress = data.get('progress', 0)
         chain.result = data.get('result')

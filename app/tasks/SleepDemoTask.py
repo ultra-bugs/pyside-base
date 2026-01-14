@@ -11,7 +11,6 @@
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-
 import time
 from typing import Any, Dict
 
@@ -33,7 +32,7 @@ class SleepDemoTask(AbstractTask):
             if self.isStopped():
                 return
             pct = int(((i + 1) / total) * 100)
-            self._logger.info(f"{self.name}: sleeping {i + 1}/{total}s")
+            self._logger.info(f'{self.name}: sleeping {i + 1}/{total}s')
             self.setProgress(min(99, pct))
             time.sleep(1.0)
         self.setProgress(100)

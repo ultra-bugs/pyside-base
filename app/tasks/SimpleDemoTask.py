@@ -11,7 +11,6 @@
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-
 import time
 from typing import Any, Dict
 
@@ -29,13 +28,13 @@ class SimpleDemoTask(AbstractTask):
         self._logger = logger.bind(component='TaskSystem')
 
     def handle(self) -> None:
-        self._logger.info(f"{self.name}: start")
+        self._logger.info(f'{self.name}: start')
         self.setProgress(0)
         steps = [10, 30, 60, 100]
         for p in steps:
             if self.isStopped():
                 return
-            self._logger.info(f"{self.name}: {self.message}")
+            self._logger.info(f'{self.name}: {self.message}')
             self.setProgress(p)
             time.sleep(0.2)
         self.result = {'ok': True}

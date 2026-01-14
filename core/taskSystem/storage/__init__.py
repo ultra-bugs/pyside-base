@@ -17,11 +17,7 @@ Provides storage abstractions and implementations for the TaskSystem.
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-
 from .BaseStorage import BaseStorage
 from .JsonStorage import JsonStorage
 
-__all__ = [
-    'BaseStorage',
-    'JsonStorage',
-]
+__all__ = ['BaseStorage', 'JsonStorage']

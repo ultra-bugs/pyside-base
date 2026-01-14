@@ -4,6 +4,7 @@ AbstractTask
 Base class for all tasks in the TaskSystem.
 Provides common functionality, lifecycle management, and Qt signals integration.
 """
+
 import abc
 import threading
 import uuid
@@ -13,9 +14,11 @@ from PySide6 import QtCore
 from .Exceptions import TaskCancellationException
 from .TaskStatus import TaskStatus
 from ..Logging import logger
+
 if TYPE_CHECKING:
     from .ChainContext import ChainContext
 logger = logger.bind(component='TaskSystem')
+
 
 class QObjectABCMeta(type(QtCore.QObject), abc.ABCMeta):
     """
@@ -24,6 +27,7 @@ class QObjectABCMeta(type(QtCore.QObject), abc.ABCMeta):
     This is necessary because both QObject and ABC have their own metaclasses,
     and Python doesn't allow multiple metaclasses without explicit resolution.
     """
+
     pass
 
 
@@ -57,11 +61,21 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         currentRetryAttempts (int): Current number of retry attempts
         failSilently (bool): Whether to suppress error propagation
     """
+
     statusChanged = QtCore.Signal(str, object)
     progressUpdated = QtCore.Signal(str, int)
     taskFinished = QtCore.Signal(str, object, object, str)
 
-    def __init__(self, name: str, description: str='', isPersistent: bool=False, maxRetries: int=0, retryDelaySeconds: int=5, failSilently: bool=False, chainUuid: Optional[str]=None):
+    def __init__(
+        self,
+        name: str,
+        description: str = '',
+        isPersistent: bool = False,
+        maxRetries: int = 0,
+        retryDelaySeconds: int = 5,
+        failSilently: bool = False,
+        chainUuid: Optional[str] = None,
+    ):
         """
         Initialize the abstract task.
         Args:
@@ -94,6 +108,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         self.failSilently = failSilently
         self._stopEvent = threading.Event()
         logger.debug(f'Task created: {self.uuid} - {self.name}' + (f' (chain: {chainUuid})' if chainUuid else ''))
+
     serializables: Optional[Any] = None
 
     def setStatus(self, newStatus: TaskStatus) -> None:
@@ -151,7 +166,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         except Exception as e:
             logger.error(f'Error during cancellation cleanup for task {self.uuid}: {e}')
 
-    def fail(self, reason: str='Task failed by itself') -> None:
+    def fail(self, reason: str = 'Task failed by itself') -> None:
         """
         Mark task as failed with a reason.
         Args:
@@ -165,16 +180,32 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
     def serialize(self) -> Dict[str, Any]:
         """
         Serialize task to dictionary for persistence.
-
         Behavior:
         - Always includes core runtime fields (uuid, className, status, timestamps, etc.).
         - Task-specific fields are dynamic:
           - If subclass defines `serializables` (iterable of attribute names), only those are included.
           - Otherwise, all public instance attributes not starting with '_' and not core fields are included.
         """
-        data: Dict[str, Any] = {'uuid': self.uuid, 'className': f'{self.__class__.__module__}.{self.__class__.__name__}', 'name': self.name, 'description': self.description, 'status': self.status.name if isinstance(self.status, TaskStatus) else str(self.status), 'progress': self.progress, 'result': self.result, 'error': self.error, 'createdAt': self.createdAt.isoformat() if self.createdAt else None, 'startedAt': self.startedAt.isoformat() if self.startedAt else None, 'finishedAt': self.finishedAt.isoformat() if self.finishedAt else None, 'isPersistent': self.isPersistent, 'maxRetries': self.maxRetries, 'retryDelaySeconds': self.retryDelaySeconds, 'currentRetryAttempts': self.currentRetryAttempts, 'failSilently': self.failSilently, 'chainUuid': self.chainUuid}
+        data: Dict[str, Any] = {
+            'uuid': self.uuid,
+            'className': f'{self.__class__.__module__}.{self.__class__.__name__}',
+            'name': self.name,
+            'description': self.description,
+            'status': self.status.name if isinstance(self.status, TaskStatus) else str(self.status),
+            'progress': self.progress,
+            'result': self.result,
+            'error': self.error,
+            'createdAt': self.createdAt.isoformat() if self.createdAt else None,
+            'startedAt': self.startedAt.isoformat() if self.startedAt else None,
+            'finishedAt': self.finishedAt.isoformat() if self.finishedAt else None,
+            'isPersistent': self.isPersistent,
+            'maxRetries': self.maxRetries,
+            'retryDelaySeconds': self.retryDelaySeconds,
+            'currentRetryAttempts': self.currentRetryAttempts,
+            'failSilently': self.failSilently,
+            'chainUuid': self.chainUuid,
+        }
         coreKeys = set(data.keys())
-
         def _to_serializable(v: Any) -> Any:
             if isinstance(v, datetime):
                 return v.isoformat()

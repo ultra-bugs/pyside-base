@@ -4,9 +4,11 @@ from PySide6.QtCore import QMutex, QMutexLocker
 from .Decorators import singleton
 from .Utils import PythonHelper
 
+
 @singleton
 class Publisher:
     """Publisher (Subject) in Observer pattern"""
+
     _instance: 'Publisher' = None
 
     @staticmethod
@@ -21,7 +23,7 @@ class Publisher:
         self.eventSpecificSubscribers = {}
         self._lock = QMutex()
 
-    def subscribe(self, subscriber, event: Optional[str]=None) -> 'Publisher':
+    def subscribe(self, subscriber, event: Optional[str] = None) -> 'Publisher':
         """Subscribe to all events or a specific event"""
         locker = QMutexLocker(self._lock)
         if event is None:
@@ -33,7 +35,7 @@ class Publisher:
                 self.eventSpecificSubscribers[event].append(subscriber)
         return self
 
-    def unsubscribe(self, subscriber, event: Optional[str]=None) -> 'Publisher':
+    def unsubscribe(self, subscriber, event: Optional[str] = None) -> 'Publisher':
         """Unsubscribe from all events or a specific event"""
         locker = QMutexLocker(self._lock)
         if event is None:
@@ -72,6 +74,7 @@ class Publisher:
             return self
         slot.connect(lambda *s_args, **signalKwargs: self.notify(event, *[*args, *s_args], **{**kwargs, **signalKwargs}))
         return self
+
 
 class Subscriber:
     """Base class for subscribers (observers)"""

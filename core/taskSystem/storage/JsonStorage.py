@@ -4,6 +4,7 @@ JsonStorage
 JSON file-based implementation of BaseStorage.
 Stores data in a JSON file separate from the main application config.
 """
+
 import json
 import os
 from typing import Any, Dict, Optional
@@ -11,14 +12,16 @@ from threading import Lock
 from core.Utils import PathHelper
 from core.Logging import logger
 from .BaseStorage import BaseStorage
+
 logger = logger.bind(component='TaskSystem')
+
 
 class JsonStorage(BaseStorage):
     """
     JSON file-based storage backend.
     """
 
-    def __init__(self, filePath: str='config/task_storage.json'):
+    def __init__(self, filePath: str = 'config/task_storage.json'):
         """
         Initialize JsonStorage.
         Args:
@@ -52,7 +55,7 @@ class JsonStorage(BaseStorage):
             except Exception as e:
                 logger.error(f'Failed to save task storage to {self._file_path}: {e}')
 
-    def load(self, key: str, default: Any=None) -> Any:
+    def load(self, key: str, default: Any = None) -> Any:
         """
         Load data associated with a key.
         Args:

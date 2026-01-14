@@ -4,11 +4,11 @@ from functools import wraps
 from dataclasses import fields, is_dataclass
 from PySide6 import QtCore, QtWidgets
 
+
 def autoStrip(cls):
     if not is_dataclass(cls):
         raise TypeError('@auto_strip is only applicable to dataclass')
     originalPostInit = getattr(cls, '__post_init__', None)
-
     @wraps(originalPostInit)
     def newPostInit(self, *args, **kwargs):
         if originalPostInit:
@@ -20,6 +20,7 @@ def autoStrip(cls):
                     setattr(self, f.name, value.strip())
     setattr(cls, '__post_init__', newPostInit)
     return cls
+
 
 class SignalBlocker(QtCore.QObject):
     """Implements a signal blocker which can be used to temporarily block qt signals
@@ -37,10 +38,10 @@ class SignalBlocker(QtCore.QObject):
     def __exit__(self, exc_type, exc_value, traceback):
         self._qt_object.blockSignals(False)
 
+
 def singleton(cls):
     """Singleton decorator"""
     instances = {}
-
     @wraps(cls)
     def getInstance(*args, **kwargs):
         if cls not in instances:
@@ -48,14 +49,16 @@ def singleton(cls):
         return instances[cls]
     return getInstance
 
-def catchExceptInMsgBox(func: typing.Callable, errorMsg: str | None=None, onlyExceptions: typing.List[typing.Type[Exception]] | None=None, reRaise: bool=True, addExecInfo: bool=True):
+
+def catchExceptInMsgBox(
+    func: typing.Callable, errorMsg: str | None = None, onlyExceptions: typing.List[typing.Type[Exception]] | None = None, reRaise: bool = True, addExecInfo: bool = True
+):
     """Decorator that catches ALL exceptions and logs them. Also shows a message box if the app is running.
     TODO: second argument with list of exceptions to catch?
     Args:
         func (callable): The function which should be called
         reRaise (bool, optional): If True, the exception will be re-raised after being logged. Defaults to True.
     """
-
     def showExceptInMsgBox(*args, **kwargs):
         from core.Logging import logger as log
         try:

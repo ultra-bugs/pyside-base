@@ -18,7 +18,9 @@ from PySide6.QtCore import QCoreApplication, QTimer, Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QMessageBox
 from box import Box
+
 T = TypeVar('T')
+
 
 class PathHelperInternals:
     """
@@ -91,7 +93,7 @@ class PathHelperInternals:
         return PathHelperInternals.create_path_obj(base_path).joinpath(*paths)
 
     @staticmethod
-    def make_dirs(path: Union[str, pathlib.Path], parents: bool=True, exist_ok: bool=True) -> None:
+    def make_dirs(path: Union[str, pathlib.Path], parents: bool = True, exist_ok: bool = True) -> None:
         """Create directories."""
         PathHelperInternals.create_path_obj(path).mkdir(parents=parents, exist_ok=exist_ok)
 
@@ -105,11 +107,13 @@ class PathHelperInternals:
         """List directory contents."""
         return list(PathHelperInternals.create_path_obj(path).iterdir())
 
+
 class PathHelper:
     """
     Utility class for handling file system paths in the application.
     Provides static methods to work with project paths, especially focusing on the data directory.
     """
+
     _actual_file_path: Optional[pathlib.Path] = None
     _root_dir: Optional[pathlib.Path] = None
 
@@ -203,7 +207,7 @@ class PathHelper:
         return PathHelper._root_dir
 
     @staticmethod
-    def relativePathFromAbs(absolute_path: Union[str, pathlib.Path], base_path: Optional[Union[str, pathlib.Path]]=None) -> str:
+    def relativePathFromAbs(absolute_path: Union[str, pathlib.Path], base_path: Optional[Union[str, pathlib.Path]] = None) -> str:
         """
         Get the relative path from a base path to an absolute path.
         Args:
@@ -221,7 +225,7 @@ class PathHelper:
         return str(relative)
 
     @staticmethod
-    def relativeModulePathFromAbs(absolute_path: Union[str, pathlib.Path], base_path: Optional[Union[str, pathlib.Path]]=None) -> str:
+    def relativeModulePathFromAbs(absolute_path: Union[str, pathlib.Path], base_path: Optional[Union[str, pathlib.Path]] = None) -> str:
         """
         Get the relative module path from a base path to an absolute path.
         Args:
@@ -374,7 +378,7 @@ class PathHelper:
         return PathHelperInternals.join_path(vendor_path, relative_path)
 
     @staticmethod
-    def listDir(directory: Union[str, pathlib.Path], pattern: Optional[str]=None) -> List[pathlib.Path]:
+    def listDir(directory: Union[str, pathlib.Path], pattern: Optional[str] = None) -> List[pathlib.Path]:
         """
         List all files and directories in the specified directory, with optional pattern matching.
         Args:
@@ -571,7 +575,15 @@ class PathHelper:
         root_dir = PathHelper.rootDir()
         is_symlink = PathHelper.isUsingSymlinkedCore()
         cwd = PathHelperInternals.get_cwd()
-        info = [f'Current working directory: {cwd}', f'Utils.py location: {file_path}', f'Detected root directory: {root_dir}', f"Using symlinked core: {('Yes' if is_symlink else 'No')}", f'Data directory: {PathHelper.dataDir()}', f'Assets directory: {PathHelper.assetsDir()}', f'Vendor directory: {PathHelper.vendorDir()}']
+        info = [
+            f'Current working directory: {cwd}',
+            f'Utils.py location: {file_path}',
+            f'Detected root directory: {root_dir}',
+            f'Using symlinked core: {("Yes" if is_symlink else "No")}',
+            f'Data directory: {PathHelper.dataDir()}',
+            f'Assets directory: {PathHelper.assetsDir()}',
+            f'Vendor directory: {PathHelper.vendorDir()}',
+        ]
         core_dir = PathHelperInternals.join_path(root_dir, 'core')
         if PathHelperInternals.getPathIsSymlink(core_dir):
             core_target = PathHelperInternals.get_path_resolve(core_dir)
@@ -582,8 +594,8 @@ class PathHelper:
             info.append(f'Services directory is a symlink: {services_dir} -> {services_target}')
         return '\n'.join(info)
 
-class OsHelper:
 
+class OsHelper:
     @staticmethod
     def openWithDefaultProgram(file_path: Union[str, pathlib.Path]) -> bool:
         """
@@ -612,8 +624,8 @@ class OsHelper:
             print(f'Error opening file: {e}')
             return False
 
-class PythonHelper:
 
+class PythonHelper:
     @staticmethod
     def is_type_compatible(value, annotation):
         try:
@@ -625,7 +637,7 @@ class PythonHelper:
             return False
 
     @staticmethod
-    def dataclass2Json(data_object: T, anotherDict: Optional[Dict[str, Any]]=None) -> str:
+    def dataclass2Json(data_object: T, anotherDict: Optional[Dict[str, Any]] = None) -> str:
         """
         Convert a dataclass object to a JSON string.
         Args:
@@ -730,7 +742,7 @@ class PythonHelper:
 
     @staticmethod
     def strGetBetween(s: str, before: str, after: str) -> str:
-        return s[s.find(before) + len(before):s.find(after)]
+        return s[s.find(before) + len(before) : s.find(after)]
 
     @staticmethod
     def createFairRandomChooser(items: List[T]) -> Callable[[], T]:
@@ -746,7 +758,6 @@ class PythonHelper:
             raise ValueError('Input list is empty.')
         items = np.array(items)
         counts = np.zeros(len(items), dtype=np.int32)
-
         def chooser():
             min_count = np.min(counts)
             mask = counts == min_count
@@ -765,11 +776,12 @@ class PythonHelper:
         return str(num)[:4] + '__' + str(num)[-4:]
 
     @staticmethod
-    def generateRandomString(length: int=8) -> str:
+    def generateRandomString(length: int = 8) -> str:
         import random
         import string
         characters = string.ascii_letters + string.digits
         return ''.join((random.choice(characters) for _ in range(length)))
+
 
 def isInDebugEnv() -> bool:
     """
@@ -779,14 +791,14 @@ def isInDebugEnv() -> bool:
     """
     return os.getenv('PYTHONUNBUFFERED', '0') == '1'
 
-class WidgetUtils:
 
+class WidgetUtils:
     @staticmethod
     def _defaultOkButton(msg_box: QMessageBox):
         return WidgetUtils._defaultButton(msg_box, QMessageBox.Ok, moveCursor=True, keepOnTop=True)
 
     @staticmethod
-    def _defaultButton(msg_box: QMessageBox, button: QMessageBox.StandardButton=QMessageBox.Ok, moveCursor=False, keepOnTop=False):
+    def _defaultButton(msg_box: QMessageBox, button: QMessageBox.StandardButton = QMessageBox.Ok, moveCursor=False, keepOnTop=False):
         msg_box.setWindowIcon(AppHelper.getAppIcon())
         msg_box.setDefaultButton(button)
         msg_box.setEscapeButton(button)
@@ -795,7 +807,6 @@ class WidgetUtils:
             msg_box.setWindowFlag(Qt.WindowStaysOnTopHint)
         msg_box.setFocus()
         if moveCursor:
-
             def move_cursor_to_btn():
                 ok_button = msg_box.button(button)
                 if ok_button:
@@ -812,7 +823,6 @@ class WidgetUtils:
 
     @staticmethod
     def _activeMsgBox(msg_box: QMessageBox):
-
         def focus():
             msg_box.raise_()
             msg_box.activateWindow()
@@ -820,7 +830,7 @@ class WidgetUtils:
         QTimer.singleShot(100, focus)
 
     @staticmethod
-    def showAlertMsgBox(controller: None, msg: str='', title: str='INFO', icon: int=QMessageBox.Information, createOnly=False, placeCursorAtDefaultBtn=False):
+    def showAlertMsgBox(controller: None, msg: str = '', title: str = 'INFO', icon: int = QMessageBox.Information, createOnly=False, placeCursorAtDefaultBtn=False):
         msg_box = WidgetUtils._createMsgBox(controller)
         if placeCursorAtDefaultBtn:
             msg_box = WidgetUtils._defaultOkButton(msg_box)
@@ -833,7 +843,9 @@ class WidgetUtils:
         return msg_box
 
     @staticmethod
-    def showErrorMsgBox(controller=None, msg: str='Opps. Something went wrong', title: str='ERROR', icon: int=QMessageBox.Critical, createOnly=False, placeCursorAtDefaultBtn=False):
+    def showErrorMsgBox(
+        controller=None, msg: str = 'Opps. Something went wrong', title: str = 'ERROR', icon: int = QMessageBox.Critical, createOnly=False, placeCursorAtDefaultBtn=False
+    ):
         msg_box = WidgetUtils._createMsgBox(controller)
         if placeCursorAtDefaultBtn:
             msg_box = WidgetUtils._defaultOkButton(msg_box)
@@ -847,7 +859,9 @@ class WidgetUtils:
         return msg_box
 
     @staticmethod
-    def showYesNoMsgBox(controller: None, msg: str='Are you sure?', title: str='MESSAGE', icon: int=QMessageBox.Question, createOnly=False, defaultYes=False, escapeNo=False) -> bool:
+    def showYesNoMsgBox(
+        controller: None, msg: str = 'Are you sure?', title: str = 'MESSAGE', icon: int = QMessageBox.Question, createOnly=False, defaultYes=False, escapeNo=False
+    ) -> bool:
         msg_box = WidgetUtils._createMsgBox(controller)
         msg_box = WidgetUtils._defaultButton(msg_box, QMessageBox.Yes if defaultYes else QMessageBox.No, moveCursor=False, keepOnTop=True)
         msg_box.setIcon(icon)
@@ -863,9 +877,10 @@ class WidgetUtils:
         return bool(result == QMessageBox.Yes)
 
     @staticmethod
-    def transQt(msg: str, name_space: str=None) -> str:
+    def transQt(msg: str, name_space: str = None) -> str:
         name_space = name_space if name_space is not None else 'WidgetUtils'
         return QCoreApplication.translate(name_space, msg)
+
 
 class UrlHelper:
     """
@@ -915,13 +930,17 @@ class UrlHelper:
                 result[component] = password
         return Box(result, box_dots=True)
 
+
 class ProxyDeadError(Exception):
     """Exception raised when proxy connection fails"""
+
     pass
+
 
 @dataclass
 class ProxyInfo:
     """Dataclass containing proxy information"""
+
     PROTOCOL: str = 'SOCKS5'
     HOST: str = ''
     PORT: str = ''
@@ -933,12 +952,15 @@ class ProxyInfo:
         """Alias for PROTOCOL"""
         return self.PROTOCOL
 
+
 @dataclass
 class ProxyCheckResult:
     """Dataclass containing proxy check results"""
+
     original: str = ''
     proxied: str = ''
     isChanged: bool = False
+
 
 class ProxyHelper:
     """Helper class for proxy operations"""
@@ -1028,7 +1050,7 @@ class ProxyHelper:
         return chromium_options
 
     @staticmethod
-    def checkProxyConnection(proxy_string: str, check_url: str='https://api.ipify.org/') -> ProxyCheckResult:
+    def checkProxyConnection(proxy_string: str, check_url: str = 'https://api.ipify.org/') -> ProxyCheckResult:
         """
         Check proxy connection and return IP comparison result.
         Args:
@@ -1068,8 +1090,10 @@ class ProxyHelper:
         except Exception as e:
             raise ProxyDeadError(f'Unexpected error during proxy check: {str(e)}\n{traceback.format_exc()}')
 
+
 class URIComponent(Enum):
     """URI component types"""
+
     SCHEME = auto()
     HOST = auto()
     PORT = auto()
@@ -1079,8 +1103,8 @@ class URIComponent(Enum):
     USERNAME = auto()
     PASSWORD = auto()
 
-class AppHelper:
 
+class AppHelper:
     @staticmethod
     def getConfig() -> 'core.Config':
         from core.Config import Config

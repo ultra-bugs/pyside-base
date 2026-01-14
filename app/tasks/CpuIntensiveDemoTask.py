@@ -4,10 +4,11 @@ from typing import Any, Dict
 from core.Logging import logger
 from core.taskSystem.AbstractTask import AbstractTask
 
+
 class CpuIntensiveDemoTask(AbstractTask):
     """CPU-intensive task that performs a number of operations and reports progress."""
 
-    def __init__(self, name: str='CPU Intensive Task', complexity: int=5000000, **kwargs):
+    def __init__(self, name: str = 'CPU Intensive Task', complexity: int = 5000000, **kwargs):
         super().__init__(name=name, **kwargs)
         self.complexity = max(1000, int(complexity))
         self._logger = logger.bind(component='TaskSystem')
@@ -36,4 +37,12 @@ class CpuIntensiveDemoTask(AbstractTask):
 
     @classmethod
     def deserialize(cls, data: Dict[str, Any]) -> 'CpuIntensiveDemoTask':
-        return cls(name=data.get('name', 'CPU Intensive Task'), complexity=int(data.get('complexity', 5000000)), description=data.get('description', ''), isPersistent=data.get('isPersistent', False), maxRetries=data.get('maxRetries', 0), retryDelaySeconds=data.get('retryDelaySeconds', 5), failSilently=data.get('failSilently', False))
+        return cls(
+            name=data.get('name', 'CPU Intensive Task'),
+            complexity=int(data.get('complexity', 5000000)),
+            description=data.get('description', ''),
+            isPersistent=data.get('isPersistent', False),
+            maxRetries=data.get('maxRetries', 0),
+            retryDelaySeconds=data.get('retryDelaySeconds', 5),
+            failSilently=data.get('failSilently', False),
+        )

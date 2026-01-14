@@ -3,6 +3,7 @@ from collections import defaultdict
 from copy import deepcopy
 from PySide6.QtCore import QAbstractItemModel
 
+
 class DataTrackingMixin:
     _key_pattern = '{row}_{column}'
 

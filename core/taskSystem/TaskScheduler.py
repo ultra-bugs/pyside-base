@@ -5,20 +5,23 @@ Pure Qt-based task scheduler using QTimer.
 No background threads - fully integrated with Qt event loop.
 Supports date-based, interval-based, and basic cron-style scheduling.
 """
+
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 from PySide6 import QtCore
 from .storage.BaseStorage import BaseStorage
 from ..Config import Config
 from ..Logging import logger
+
 logger = logger.bind(component='TaskSystem')
+
 
 class ScheduledJob:
     """
     Represents a scheduled job with its timer and metadata.
     """
 
-    def __init__(self, jobId: str, taskUuid: str, taskClass: str, taskData: Dict[str, Any], trigger: str, timer: QtCore.QTimer, nextRun: Optional[datetime]=None):
+    def __init__(self, jobId: str, taskUuid: str, taskClass: str, taskData: Dict[str, Any], trigger: str, timer: QtCore.QTimer, nextRun: Optional[datetime] = None):
         self.jobId = jobId
         self.taskUuid = taskUuid
         self.taskClass = taskClass
@@ -30,7 +33,16 @@ class ScheduledJob:
 
     def toDict(self) -> Dict[str, Any]:
         """Serialize job for persistence."""
-        return {'jobId': self.jobId, 'taskUuid': self.taskUuid, 'taskClass': self.taskClass, 'taskData': self.taskData, 'trigger': self.trigger, 'nextRun': self.nextRun.isoformat() if self.nextRun else None, 'createdAt': self.createdAt.isoformat()}
+        return {
+            'jobId': self.jobId,
+            'taskUuid': self.taskUuid,
+            'taskClass': self.taskClass,
+            'taskData': self.taskData,
+            'trigger': self.trigger,
+            'nextRun': self.nextRun.isoformat() if self.nextRun else None,
+            'createdAt': self.createdAt.isoformat(),
+        }
+
 
 class TaskScheduler(QtCore.QObject):
     """
@@ -48,6 +60,7 @@ class TaskScheduler(QtCore.QObject):
         jobUnscheduled: Emitted when a job is removed (jobId)
         jobExecuted: Emitted when a job triggers (jobId, taskUuid)
     """
+
     jobScheduled = QtCore.Signal(str, str)
     jobUnscheduled = QtCore.Signal(str)
     jobExecuted = QtCore.Signal(str, str)
@@ -66,7 +79,7 @@ class TaskScheduler(QtCore.QObject):
         self._loadJobs()
         logger.info('TaskScheduler initialized (Pure Qt)')
 
-    def addScheduledTask(self, task: Any, trigger: str, runDate: Optional[datetime]=None, intervalSeconds: Optional[int]=None, **kwargs) -> str:
+    def addScheduledTask(self, task: Any, trigger: str, runDate: Optional[datetime] = None, intervalSeconds: Optional[int] = None, **kwargs) -> str:
         """
         Schedule a task for execution.
         Args:
@@ -149,7 +162,7 @@ class TaskScheduler(QtCore.QObject):
             logger.debug(f'Importing module: {moduleName}, class: {className}')
             module = __import__(moduleName, fromlist=[className])
             taskCls = getattr(module, className)
-            logger.debug(f"Reconstructing task from data: {taskData.get('name', 'Unknown')}")
+            logger.debug(f'Reconstructing task from data: {taskData.get("name", "Unknown")}')
             task = taskCls.deserialize(taskData)
             if task.uuid != taskUuid:
                 logger.warning(f'Task UUID mismatch after deserialization: {task.uuid} != {taskUuid}')
@@ -203,11 +216,18 @@ class TaskScheduler(QtCore.QObject):
         """
         jobs = []
         for job in self._jobs.values():
-            jobInfo = {'id': job.jobId, 'name': job.taskData.get('name', 'Unknown'), 'task_uuid': job.taskUuid, 'trigger': job.trigger, 'next_run_time': job.nextRun.isoformat() if job.nextRun else None, 'created_at': job.createdAt.isoformat()}
+            jobInfo = {
+                'id': job.jobId,
+                'name': job.taskData.get('name', 'Unknown'),
+                'task_uuid': job.taskUuid,
+                'trigger': job.trigger,
+                'next_run_time': job.nextRun.isoformat() if job.nextRun else None,
+                'created_at': job.createdAt.isoformat(),
+            }
             jobs.append(jobInfo)
         return jobs
 
-    def shutdown(self, wait: bool=True) -> None:
+    def shutdown(self, wait: bool = True) -> None:
         """
         Shutdown the scheduler.
         Args:
@@ -256,7 +276,7 @@ class TaskScheduler(QtCore.QObject):
                     logger.info(f'Rescheduling persisted job {jobId}')
                     logger.warning(f'Job {jobId} persistence not fully implemented yet')
                 except Exception as e:
-                    logger.error(f"Failed to load job {jobData.get('jobId', 'unknown')}: {e}")
+                    logger.error(f'Failed to load job {jobData.get("jobId", "unknown")}: {e}')
                     continue
         except Exception as e:
             logger.error(f'Failed to load scheduled jobs: {e}')

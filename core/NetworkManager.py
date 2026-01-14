@@ -3,6 +3,7 @@ from PySide6.QtCore import QObject, QStandardPaths
 from core.Config import Config
 from core.Utils import PathHelper
 
+
 class NetworkManager(QObject):
     """Manages QNetworkAccessManager and global network configurations."""
 

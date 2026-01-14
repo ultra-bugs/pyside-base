@@ -7,6 +7,7 @@ sender and receiver components.
 Thread-Safety: Uses QMutex for all critical sections.
 Timeout: Uses threading.Timer for each pending acknowledgment.
 """
+
 import threading
 import time
 from dataclasses import dataclass
@@ -14,9 +15,11 @@ from typing import Any, Callable, Dict, Optional
 from PySide6.QtCore import QMutex, QMutexLocker
 from core.Logging import logger
 
+
 @dataclass
 class PendingAck:
     """Data structure for a pending acknowledgment."""
+
     ackId: str
     successCallback: Callable[[str, Any], None]
     errorCallback: Optional[Callable[[str, Exception], None]]
@@ -24,6 +27,7 @@ class PendingAck:
     timeout: float
     registeredAt: float
     timer: Optional[threading.Timer] = None
+
 
 class AcknowledgmentTracker:
     """
@@ -41,7 +45,14 @@ class AcknowledgmentTracker:
         self._pending: Dict[str, PendingAck] = {}
         self._lock = QMutex()
 
-    def registerPending(self, ackId: str, successCallback: Callable[[str, Any], None], errorCallback: Optional[Callable[[str, Exception], None]]=None, timeoutCallback: Optional[Callable[[str], None]]=None, timeout: float=30.0) -> None:
+    def registerPending(
+        self,
+        ackId: str,
+        successCallback: Callable[[str, Any], None],
+        errorCallback: Optional[Callable[[str, Exception], None]] = None,
+        timeoutCallback: Optional[Callable[[str], None]] = None,
+        timeout: float = 30.0,
+    ) -> None:
         """
         Register a pending acknowledgment.
         Args:
@@ -56,7 +67,9 @@ class AcknowledgmentTracker:
         locker = QMutexLocker(self._lock)
         if ackId in self._pending:
             raise ValueError(f'Acknowledgment {ackId} already pending')
-        pendingAck = PendingAck(ackId=ackId, successCallback=successCallback, errorCallback=errorCallback, timeoutCallback=timeoutCallback, timeout=timeout, registeredAt=time.time())
+        pendingAck = PendingAck(
+            ackId=ackId, successCallback=successCallback, errorCallback=errorCallback, timeoutCallback=timeoutCallback, timeout=timeout, registeredAt=time.time()
+        )
         if timeout > 0:
             timer = threading.Timer(timeout, self._handle_timeout, args=[ackId])
             timer.daemon = True
@@ -65,7 +78,7 @@ class AcknowledgmentTracker:
         self._pending[ackId] = pendingAck
         logger.debug(f'Registered pending ack: {ackId} (timeout: {timeout}s)')
 
-    def acknowledge(self, ackId: str, result: Any=None) -> None:
+    def acknowledge(self, ackId: str, result: Any = None) -> None:
         """
         Receive successful acknowledgment.
         Args:

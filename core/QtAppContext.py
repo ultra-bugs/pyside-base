@@ -3,6 +3,7 @@ import sys
 from PySide6.QtNetwork import QNetworkAccessManager
 from typing import Any, Optional, Union
 from core.taskSystem import TaskManagerService
+
 try:
     from dotenv import load_dotenv
 except ImportError:
@@ -16,11 +17,13 @@ from core.Observer import Publisher
 from core.ServiceLocator import ServiceLocator
 from core.Exceptions import ExceptionHandler
 
+
 class QtAppContext(QObject):
     """
     Central Application Context.
     Manages Lifecycle, Feature Flags, Services, and Scoped Resources.
     """
+
     appBooting = Signal()
     appReady = Signal()
     appClosing = Signal()
@@ -54,7 +57,7 @@ class QtAppContext(QObject):
         if load_dotenv:
             load_dotenv()
 
-    def _get_env_bool(self, key: str, default: bool=True) -> bool:
+    def _get_env_bool(self, key: str, default: bool = True) -> bool:
         """Helper to parse boolean env vars (PSA_ prefix)."""
         val = os.getenv(f'PSA_{key}')
         if val is None:
@@ -166,6 +169,6 @@ class QtAppContext(QObject):
         with QMutexLocker(self._stateLock):
             self._sharedState[key] = value
 
-    def getState(self, key: str, default: Any=None) -> Any:
+    def getState(self, key: str, default: Any = None) -> Any:
         with QMutexLocker(self._stateLock):
             return self._sharedState.get(key, default)

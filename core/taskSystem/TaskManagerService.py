@@ -4,6 +4,7 @@ TaskManagerService
 Main orchestrator for the TaskSystem. Coordinates TaskQueue, TaskTracker, and TaskScheduler.
 Provides the primary API for other parts of the application to interact with tasks.
 """
+
 from typing import Any, Dict, List, Optional
 from PySide6 import QtCore
 from .ChainRetryBehavior import ChainRetryBehavior
@@ -16,7 +17,9 @@ from .storage.JsonStorage import JsonStorage
 from ..Config import Config
 from ..Logging import logger
 from ..Observer import Publisher, Subscriber
+
 logger = logger.bind(component='TaskSystem')
+
 
 class TaskManagerService(QtCore.QObject):
     """
@@ -37,6 +40,7 @@ class TaskManagerService(QtCore.QObject):
         failedTaskLogged: Emitted when a failed task is logged
         systemReady: Emitted when system initialization is complete
     """
+
     taskAdded = QtCore.Signal(str)
     taskRemoved = QtCore.Signal(str)
     taskStatusUpdated = QtCore.Signal(str, object)
@@ -51,9 +55,8 @@ class TaskManagerService(QtCore.QObject):
             publisher: Publisher instance for Observer pattern
             config: Configuration instance
         """
-        Subscriber.__init__(self, events=["TaskRequest"], isGlobalSubscriber=True)
+        Subscriber.__init__(self, events=['TaskRequest'], isGlobalSubscriber=True)
         QtCore.QObject.__init__(self)
-        
         self._publisher = publisher
         self._config = config
         self._storage = JsonStorage()
@@ -86,7 +89,7 @@ class TaskManagerService(QtCore.QObject):
         self.setMaxConcurrentTasks(maxConcurrent)
         pass
 
-    def addTask(self, task: Any, scheduleInfo: Optional[Dict[str, Any]]=None) -> None:
+    def addTask(self, task: Any, scheduleInfo: Optional[Dict[str, Any]] = None) -> None:
         """
         Add a task for execution.
         Args:
@@ -104,7 +107,15 @@ class TaskManagerService(QtCore.QObject):
             logger.info(f'Adding task to queue: {task.uuid} - {task.name}')
             self._taskQueue.addTask(task)
 
-    def addChainTask(self, name: str, tasks: List[Any], description: str='', scheduleInfo: Optional[Dict[str, Any]]=None, retryBehaviorMap: Optional[Dict[str, ChainRetryBehavior]]=None, **kwargs) -> Any:
+    def addChainTask(
+        self,
+        name: str,
+        tasks: List[Any],
+        description: str = '',
+        scheduleInfo: Optional[Dict[str, Any]] = None,
+        retryBehaviorMap: Optional[Dict[str, ChainRetryBehavior]] = None,
+        **kwargs,
+    ) -> Any:
         """
         Create and add a TaskChain for execution.
         This is a convenience method for creating TaskChain instances.
@@ -277,7 +288,7 @@ class TaskManagerService(QtCore.QObject):
         self._taskScheduler.shutdown(wait=True)
         logger.info('TaskManagerService shutdown complete')
 
-    def onTaskRequest(self, task: Any, scheduleInfo: Optional[Dict[str, Any]]=None) -> None:
+    def onTaskRequest(self, task: Any, scheduleInfo: Optional[Dict[str, Any]] = None) -> None:
         """
         Handle TaskRequest event from Observer pattern.
         Args:
@@ -309,7 +320,7 @@ class TaskManagerService(QtCore.QObject):
 
     def _onFailedTaskLogged(self, taskInfo: Dict[str, Any]) -> None:
         """Handle failedTaskLogged signal from TaskTracker."""
-        logger.debug(f"Failed task logged: {taskInfo.get('uuid')}")
+        logger.debug(f'Failed task logged: {taskInfo.get("uuid")}')
         self.failedTaskLogged.emit(taskInfo)
 
     def _onQueueStatusChanged(self) -> None:

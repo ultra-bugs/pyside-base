@@ -11,10 +11,12 @@ Subclasses typically:
 - Perform operations (API calls, DB writes, etc.)
 - Send acknowledgment back to Tracker
 """
+
 from abc import ABC
 from typing import Any
 from core.Logging import logger
 from .AcknowledgmentTracker import AcknowledgmentTracker
+
 
 class AcknowledgmentSender(ABC):
     """
@@ -35,7 +37,7 @@ class AcknowledgmentSender(ABC):
         """
         self._ack_tracker = ackTracker
 
-    def sendAcknowledgment(self, ackId: str, result: Any=None) -> None:
+    def sendAcknowledgment(self, ackId: str, result: Any = None) -> None:
         """
         Send successful acknowledgment.
         Args:

@@ -19,6 +19,7 @@ Usage:
     import requests
     response = requests.get('https://example.com')  # Uses curl_cffi
 """
+
 import random
 import threading
 from typing import Optional, List, Dict, Any
@@ -27,8 +28,10 @@ from curl_cffi import requests as curl_requests
 import requests as original_requests
 from core.Logging import logger
 
+
 class BrowserProfile:
     """Browser profile configuration for impersonation"""
+
     chromeVersions = ['chrome110', 'chrome116', 'chrome119', 'chrome120', 'chrome123', 'chrome124', 'chrome99']
     edgeVersions = ['edge101', 'edge99']
     safariVersions = ['safari15_3', 'safari15_5', 'safari17_0']
@@ -49,6 +52,7 @@ class BrowserProfile:
         """Get random Chrome profile"""
         return random.choice(cls.safariVersions)
 
+
 class AntiDetectSession(CurlSession):
     """
     Drop-in replacement for requests.Session with anti-detection features
@@ -56,12 +60,13 @@ class AntiDetectSession(CurlSession):
     This session automatically rotates JA3 fingerprints by using different
     browser profiles for impersonation.
     """
+
     _lock = threading.Lock()
     _global_profile_rotation = True
     _profile_pool: List[str] = BrowserProfile.allProfiles.copy()
     _current_profile_index = 0
 
-    def __init__(self, impersonate: Optional[str]=None, autoRotate: bool=False, profilePool: Optional[List[str]]=None, **kwargs):
+    def __init__(self, impersonate: Optional[str] = None, autoRotate: bool = False, profilePool: Optional[List[str]] = None, **kwargs):
         """
         Initialize AntiDetectSession
         Args:
@@ -88,7 +93,7 @@ class AntiDetectSession(CurlSession):
             cls._current_profile_index = (cls._current_profile_index + 1) % len(cls._profile_pool)
             return profile
 
-    def rotateProfile(self, profile: Optional[str]=None) -> str:
+    def rotateProfile(self, profile: Optional[str] = None) -> str:
         """
         Rotate to a new browser profile
         Args:
@@ -124,7 +129,7 @@ class AntiDetectSession(CurlSession):
         return self._current_impersonate
 
     @classmethod
-    def configureRotation(cls, enabled: bool=True, profilePool: Optional[List[str]]=None):
+    def configureRotation(cls, enabled: bool = True, profilePool: Optional[List[str]] = None):
         """
         Configure global profile rotation
         Args:
@@ -138,7 +143,8 @@ class AntiDetectSession(CurlSession):
                 cls._current_profile_index = 0
             logger.info(f'Profile rotation configured: enabled={enabled}, pool_size={len(cls._profile_pool)}')
 
-def installAntiDetectSession(autoRotate: bool=False, profilePool: Optional[List[str]]=None):
+
+def installAntiDetectSession(autoRotate: bool = False, profilePool: Optional[List[str]] = None):
     """
     Install anti-detect session by monkey-patching requests module
     This replaces requests.Session with AntiDetectSession and patches
@@ -161,7 +167,8 @@ def installAntiDetectSession(autoRotate: bool=False, profilePool: Optional[List[
         setattr(originalRequests, method, getattr(curlRequests, method))
     logger.info(f'Anti-detect session installed: auto_rotate={autoRotate}, profile_pool_size={(len(profilePool) if profilePool else len(BrowserProfile.allProfiles))}')
 
-def createAntiDetectSession(impersonate: Optional[str]=None, autoRotate: bool=False, profilePool: Optional[List[str]]=None) -> AntiDetectSession:
+
+def createAntiDetectSession(impersonate: Optional[str] = None, autoRotate: bool = False, profilePool: Optional[List[str]] = None) -> AntiDetectSession:
     """
     Create a new AntiDetectSession instance
     Args:
@@ -172,6 +179,7 @@ def createAntiDetectSession(impersonate: Optional[str]=None, autoRotate: bool=Fa
         Configured AntiDetectSession
     """
     return AntiDetectSession(impersonate=impersonate, autoRotate=autoRotate, profilePool=profilePool)
+
 
 def getAvailableProfiles() -> Dict[str, List[str]]:
     """Get all available browser profiles grouped by browser"""

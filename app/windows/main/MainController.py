@@ -8,8 +8,23 @@ from core.QtAppContext import QtAppContext
 from core.taskSystem.TaskStatus import TaskStatus
 from app.windows.main.main_window import Ui_MainWindow
 
+
 class MainController(Ui_MainWindow, BaseController, QMainWindow):
-    slot_map = {'addSimpleTask': ['btnAddSimpleTask', 'clicked'], 'addScheduledTask': ['btnAddScheduledTask', 'clicked'], 'addConditionTask': ['btnAddConditionTask', 'clicked'], 'addLoopTask': ['btnAddLoopTask', 'clicked'], 'addConcurrentTasks': ['btnAddConcurrentTasks', 'clicked'], 'createCpuIntensiveTask': ['btnAddCpuIntensiveTask', 'clicked'], 'addChainTask': ['btnAddChainTask', 'clicked'], 'addRetryChainTask': ['btnAddRetryChainTask', 'clicked'], 'exitApp': ['actionExit', 'triggered'], 'addNewTask': ['actionNewTask', 'triggered'], 'addNewScheduledTask': ['actionNewScheduledTask', 'triggered'], 'runConcurrentTasks': ['actionRunConcurrentTasks', 'triggered'], 'cpuIntensiveTask': ['actionCpuIntensiveTask', 'triggered']}
+    slot_map = {
+        'addSimpleTask': ['btnAddSimpleTask', 'clicked'],
+        'addScheduledTask': ['btnAddScheduledTask', 'clicked'],
+        'addConditionTask': ['btnAddConditionTask', 'clicked'],
+        'addLoopTask': ['btnAddLoopTask', 'clicked'],
+        'addConcurrentTasks': ['btnAddConcurrentTasks', 'clicked'],
+        'createCpuIntensiveTask': ['btnAddCpuIntensiveTask', 'clicked'],
+        'addChainTask': ['btnAddChainTask', 'clicked'],
+        'addRetryChainTask': ['btnAddRetryChainTask', 'clicked'],
+        'exitApp': ['actionExit', 'triggered'],
+        'addNewTask': ['actionNewTask', 'triggered'],
+        'addNewScheduledTask': ['actionNewScheduledTask', 'triggered'],
+        'runConcurrentTasks': ['actionRunConcurrentTasks', 'triggered'],
+        'cpuIntensiveTask': ['actionCpuIntensiveTask', 'triggered'],
+    }
 
     def __init__(self, parent=None):
         ctx = QtAppContext.globalInstance()
@@ -85,7 +100,7 @@ class MainController(Ui_MainWindow, BaseController, QMainWindow):
             self.tableTasks.setItem(row, 0, idItem)
             name = task.get('name', '')
             if 'subTasks' in task:
-                name = f"🔗 {name} ({len(task['subTasks'])} steps)"
+                name = f'🔗 {name} ({len(task["subTasks"])} steps)'
             nameItem = QTableWidgetItem(name)
             self.tableTasks.setItem(row, 1, nameItem)
             statusStr = task.get('status', 'PENDING')
@@ -163,7 +178,7 @@ class MainController(Ui_MainWindow, BaseController, QMainWindow):
             taskInfo = self.taskManager._taskTracker.getTaskInfo(uuid)
             if taskInfo.get('isChainChild', False):
                 parentName = taskInfo.get('parentChainName', 'Unknown Chain')
-                self.logMessage(f"Chain step added: {taskInfo.get('name')} (in {parentName})")
+                self.logMessage(f'Chain step added: {taskInfo.get("name")} (in {parentName})')
             else:
                 self.logMessage(f'Task added: {uuid[:8]}')
         except Exception:

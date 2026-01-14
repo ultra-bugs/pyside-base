@@ -24,12 +24,15 @@ numpy = ">=2.4.1, <3"
 
 # Dev tools for local development (enabled by default via the default environment below)
 [feature.dev.pypi-dependencies]
-pytest = "*"
 ruff = "*"
+
+[feature.tests.pypi-dependencies]
+ruff = "*"
+pytest = "*"
 mypy = "*"
 
 [environments]
-default = { features = ["dev"] }
+default = { features = ["dev", "tests"] }
 
 [tasks]
 # App run

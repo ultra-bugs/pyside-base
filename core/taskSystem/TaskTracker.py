@@ -4,6 +4,7 @@ TaskTracker.py
 Tracks active tasks and maintains history of failed tasks with persistence.
 Monitors task status, progress, and logs failures for analysis.
 """
+
 from datetime import datetime
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from PySide6 import QtCore
@@ -17,10 +18,12 @@ if TYPE_CHECKING:
 
 logger = logger.bind(component='TaskSystem')
 
+
 class TaskTracker(QtCore.QObject):
     """
     Tracks active tasks, manages signals, and persists history.
     """
+
     taskAdded = QtCore.Signal(str)
     taskRemoved = QtCore.Signal(str)
     taskUpdated = QtCore.Signal(str)
@@ -47,27 +50,19 @@ class TaskTracker(QtCore.QObject):
         if uuid in self._activeTasks:
             logger.warning(f'Task {uuid} already tracked')
             return
-
         isChain = self._isTaskChain(task)
         self._activeTasks[uuid] = task
-        
         # Connect signals for the main task
         self._connectTaskSignals(task)
-
         # Handle Chain Children
         if isChain:
             for child in task._tasks:
                 childUuid = child.uuid
-                self._chainChildTasks[childUuid] = {
-                    'isChainChild': True,
-                    'chainUuid': uuid,
-                    'parentChainName': task.name
-                }
+                self._chainChildTasks[childUuid] = {'isChainChild': True, 'chainUuid': uuid, 'parentChainName': task.name}
                 # Track child if not already tracked
                 if childUuid not in self._activeTasks:
                     self._activeTasks[childUuid] = child
                     self._connectTaskSignals(child)
-
         logger.info(f'Task added: {uuid} ({task.name})')
         self.taskAdded.emit(uuid)
 
@@ -75,10 +70,8 @@ class TaskTracker(QtCore.QObject):
         """Remove task from tracking and disconnect signals."""
         if uuid not in self._activeTasks:
             raise TaskNotFoundException(uuid, f'Cannot remove {uuid}: not tracked')
-
         # Retrieve and remove the main task
         task = self._activeTasks.pop(uuid)
-        
         # Cleanup if it is a Chain
         if self._isTaskChain(task):
             for child in task._tasks:
@@ -87,13 +80,10 @@ class TaskTracker(QtCore.QObject):
                 if c_uuid in self._activeTasks:
                     child_task = self._activeTasks.pop(c_uuid)
                     self._disconnectTaskSignals(child_task)
-
         # Cleanup metadata if it was a child
         self._chainChildTasks.pop(uuid, None)
-
         # Disconnect main task
         self._disconnectTaskSignals(task)
-
         logger.info(f'Task removed: {uuid} ({task.name})')
         self.taskRemoved.emit(uuid)
 
@@ -101,21 +91,15 @@ class TaskTracker(QtCore.QObject):
         """Get serialized info for a task."""
         if uuid not in self._activeTasks:
             raise TaskNotFoundException(uuid)
-
         task = self._activeTasks[uuid]
         info = task.serialize()
-
         if self._isTaskChain(task):
             info['subTasks'] = [t.serialize() for t in task._tasks]
             if hasattr(task, '_chainContext'):
                 info['chainContext'] = task._chainContext.serialize()
         elif uuid in self._chainChildTasks:
             meta = self._chainChildTasks[uuid]
-            info.update({
-                'isChainChild': True,
-                'chainUuid': meta['chainUuid'],
-                'parentChainName': meta['parentChainName']
-            })
+            info.update({'isChainChild': True, 'chainUuid': meta['chainUuid'], 'parentChainName': meta['parentChainName']})
         return info
 
     def getAllTasksInfo(self) -> List[Dict[str, Any]]:
@@ -171,7 +155,6 @@ class TaskTracker(QtCore.QObject):
     def _onTaskFinished(self, uuid: str, status: TaskStatus, res: Any, err: Optional[str]):
         logger.info(f'Task finished: {uuid} [{status.name}]')
         self.taskUpdated.emit(uuid)
-        
         if status == TaskStatus.COMPLETED:
             task = self._activeTasks.get(uuid)
             if task:
