@@ -1,0 +1,103 @@
+graph TD
+    subgraph "Application Layer"
+        UIController["UI Controller<br/>(TaskMonitorController)"]:::appLayer
+        OtherServices["Other Services<br/>(AndroidManagerService)"]:::appLayer
+    end
+
+    subgraph "Task Management Core"
+        TMService[TaskManagerService]:::coreService
+        TaskQueue[TaskQueue]:::coreService
+        TaskScheduler[TaskScheduler]:::coreService
+        TaskTracker[TaskTracker]:::coreService
+        AbstractTask["AbstractTask<br/>(Task/Job abstraction)"]:::baseClass
+    end
+
+    subgraph "Task Implementations"
+        AdbTask[AdbCommandTask]:::taskImpl
+        RPATask[RpaScriptTask]:::taskImpl
+        CustomTask[CustomAutomationTask]:::taskImpl
+    end
+
+    subgraph "External Dependencies"
+        QThreadPool[QThreadPool]:::external
+        APScheduler[APScheduler]:::external
+        Config[Config]:::external
+        Logger[Logger]:::external
+        AppException[AppException]:::external
+        QObject[QObject]:::external
+        ThreadingEvent[threading.Event]:::external
+        Publisher[Publisher]:::observer
+        Subscriber[Subscriber]:::observer
+    end
+
+    UIController -- "Publish Event" --> Publisher:::linkApp
+    OtherServices -- "Publish Event" --> Publisher:::linkApp
+    Publisher -- "Deliver" --> TMService:::linkObserver
+    Publisher -- "Deliver" --> TaskQueue:::linkObserver
+
+    TMService -- "Manage" --> TaskQueue:::linkCore
+    TMService -- "Manage" --> TaskScheduler:::linkCore
+    TMService -- "Query/Update" --> TaskTracker:::linkCore
+    TMService -- "Persist" --> Config:::linkCore
+
+    TaskQueue -- "Submit" --> QThreadPool:::linkCore
+    TaskQueue -- "Use" --> AbstractTask:::linkCore
+    TaskQueue -- "Publish" --> Publisher:::linkCore
+    TaskQueue -- "Schedule Retry" --> TaskScheduler:::linkCore
+    TaskQueue -- "Listen" --> AbstractTask:::linkCore
+
+    TaskScheduler -- "Trigger" --> TaskQueue:::linkCore
+    TaskScheduler -- "Use" --> APScheduler:::linkCore
+    TaskScheduler -- "Persist" --> Config:::linkCore
+
+    AdbTask -.-> AbstractTask:::linkTask
+    RPATask -.-> AbstractTask:::linkTask
+    CustomTask -.-> AbstractTask:::linkTask
+
+    AbstractTask -- "Emit Signal" --> Publisher:::linkBase
+    AbstractTask -- "Log" --> Logger:::linkBase
+    AbstractTask -- "Raise" --> AppException:::linkBase
+    AbstractTask -- "Use" --> ThreadingEvent:::linkBase
+    AbstractTask -- "Invoke" --> OtherServices:::linkBase
+
+    TaskTracker -- "Store" --> AbstractTask:::linkCore
+    TaskTracker -- "Log" --> Logger:::linkCore
+    TaskTracker -- "Persist" --> Config:::linkCore
+    TaskTracker -- "Subscribe" --> Publisher:::linkCore
+
+    QThreadPool -- "Execute" --> AbstractTask:::linkExternal
+
+    Config -.-> TMService:::linkExternal
+    Config -.-> TaskQueue:::linkExternal
+    Config -.-> TaskScheduler:::linkExternal
+    Config -.-> TaskTracker:::linkExternal
+
+    Logger -.-> TMService:::linkExternal
+    Logger -.-> TaskQueue:::linkExternal
+    Logger -.-> AbstractTask:::linkExternal
+    Logger -.-> TaskTracker:::linkExternal
+
+    AppException -.-> TMService:::linkExternal
+    AppException -.-> TaskQueue:::linkExternal
+    AppException -.-> AbstractTask:::linkExternal
+
+    QObject -.-> AbstractTask:::linkExternal
+    QObject -.-> TMService:::linkExternal
+    QObject -.-> TaskQueue:::linkExternal
+    QObject -.-> TaskScheduler:::linkExternal
+    QObject -.-> TaskTracker:::linkExternal
+
+    classDef appLayer fill:#4A90E2,stroke:#2E5C8A,stroke-width:3px,color:#fff
+    classDef coreService fill:#50C878,stroke:#2D7A4A,stroke-width:3px,color:#fff
+    classDef baseClass fill:#9B59B6,stroke:#6C3483,stroke-width:3px,color:#fff
+    classDef taskImpl fill:#E67E22,stroke:#A04000,stroke-width:3px,color:#fff
+    classDef external fill:#95A5A6,stroke:#5D6D7E,stroke-width:2px,color:#fff
+    classDef observer fill:#E74C3C,stroke:#922B21,stroke-width:3px,color:#fff
+    
+    linkStyle default stroke:#95A5A6,stroke-width:5px
+    classDef linkApp stroke:#4A90E2,stroke-width:4px
+    classDef linkCore stroke:#50C878,stroke-width:4px
+    classDef linkBase stroke:#9B59B6,stroke-width:4px
+    classDef linkTask stroke:#E67E22,stroke-width:4px
+    classDef linkObserver stroke:#E74C3C,stroke-width:4px
+    classDef linkExternal stroke:#95A5A6,stroke-width:3.5px

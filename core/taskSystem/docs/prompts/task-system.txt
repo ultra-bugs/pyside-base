@@ -1,0 +1,16 @@
+- Đây là python. Không phải TS.
+
+- README là mô tả về app mà tôi đang làm việc.
+- Giờ tôi cần 1 hệ thống (thực ra gọi là thư viện cho đúng).
+     - Có/cung cấp những khả năng sau:
+
+`Task` : Manager, Runner, Tracker, Queue hỗ trợ Schedule
+    + Mục đích của cả cục này là để có thể viết các công việc tự động hoá ra thành các script, task. Tránh việc chọc nhiều vào codebase app.
+    + Scheduler:  Nếu triển khai được `APScheduler` là tốt nhất
+    + Runner/Executor: `Tôi nghĩ `QtConcurent` sẽ là lựa chọn hợp lý. Vì tôi muốn nó async compatibale
+    + Queue, Tracker: Yêu cầu có max threads controlling. Real time (ví dụ 3 task đang run, change max = 2. Thì đợi 1 trong 3 run complete rồi không chạy thêm thread nào nữa. Hoặc là init lại executor pool luôn)
+     + Queue/Pool cũng phải persitentable. Và cho phép cấu hình việc lưu các task đã add. Cho phép ngoại lệ Task Specific also
+
+
+
+- Giờ cho tôi mô hình và plan xem sao. Nhân tiện bạn có suggest gì k ?

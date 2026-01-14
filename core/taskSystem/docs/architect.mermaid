@@ -1,0 +1,131 @@
+graph TD
+    UI[UIComponents] <--> Controllers
+    Controllers <--> Handlers
+    Handlers <--> AppContext
+    
+    subgraph AppContext["QtAppContext (Services)"]
+        DM[DeviceManager]
+        TM[TaskManager]
+        TS[TaskScheduler]
+        MC[MetricsCollector]
+    end
+end
+graph TD
+    subgraph QtAppContext["QtAppContext"]
+        DeviceManager["DeviceManagerService"]
+        TaskManager["TaskManager"]
+        TaskScheduler["TaskSchedulerService"]
+        MetricsCollector["MetricsCollectorService"]
+    end
+    
+    DeviceManager --> Device["Android Devices"]
+    TaskManager --> Task["Tasks & TaskSteps"]
+    TaskScheduler --> Schedule["Lịch trình Schedules"]
+    MetricsCollector --> Metrics["Báo cáo & Metrics"]
+end
+flowchart LR
+    A[Phát hiện thiết bị ADB] --> B[Tạo các đối tượng Device]
+    B --> C[Thông báo deviceUpdated]
+    
+    A --> D[Yêu cầu cài đặt RPA Server]
+    B --> E[Lưu thiết bị vào cấu hình]
+    C --> F[UI cập nhật danh sách]
+
+flowchart TB
+    A[Người dùng tạo task] --> B[TaskCreator tạo Task + TaskSteps]
+    B --> C[Lưu vào TaskManager]
+    
+    D[Chạy task thủ công/tự động theo lịch] --> E[TaskRunner thực thi từng bước]
+    E --> F[Cập nhật trạng thái task]
+    F --> G[Kết quả và thông báo]
+
+flowchart TB
+    A[Người dùng lập lịch task] --> B[Tạo TaskSchedule]
+    B --> C[Lưu vào schedules dict]
+    
+    D[Scheduler thread chạy liên tục] --> E[Kiểm tra điều kiện thực thi]
+    E --> F[Chạy task nếu đến thời gian]
+    F --> G[Cập nhật lịch last_run/enabled]
+
+flowchart TB
+    A[Ghi nhận trạng thái thiết bị] --> B[Cập nhật metrics cho thiết bị]
+    B --> C[Lưu metrics vào bộ nhớ/file]
+    
+    D[Ghi nhận kết quả thực thi task] --> E[Cập nhật metrics của task]
+    E --> F[Tạo báo cáo và biểu đồ]
+
+sequenceDiagram
+    participant User as Người dùng
+    participant TC as TaskCreator
+    participant TM as TaskManager
+    participant TR as TaskRunner
+    participant Device as Device
+    
+    User->>TC: Tạo task mới (tên, mô tả)
+    User->>TC: Thêm các bước (TaskSteps)
+    TC->>TM: Lưu Task
+    
+    Note over TC,TM: Task.status = PENDING
+    
+    alt Chạy thủ công
+        User->>TM: Chạy Task
+    else Chạy tự động theo lịch
+        TaskScheduler->>TM: Chạy Task theo lịch
+    end
+    
+    TM->>TR: Tạo TaskRunner(task, device)
+    TR->>Device: Thực thi Task.execute()
+    
+    Note over TR,Device: Task.status = RUNNING
+    
+    loop Từng bước trong task
+        Device->>Device: Thực thi step
+        Device-->>TR: Cập nhật tiến độ
+    end
+    
+    alt Thành công
+        Device-->>TR: Kết quả thành công
+        TR-->>TM: Task.status = COMPLETED
+    else Thất bại
+        Device-->>TR: Lỗi
+        TR-->>TM: Task.status = FAILED
+    end
+    
+    TM-->>User: Thông báo kết quả
+
+classDiagram
+    Device <|-- RpaServer
+    Device <|-- FridaServer
+    Device <|-- RpaClient
+    Device <|-- FridaClient
+    class Device {
+      bool is_server_installed
+      bool is_using_dba_onrpa
+      bool is_using_frida
+      String uuid unique %%ADB devices or something that unique
+      RpaServer rpa %% Instance of RpaServer
+      RpaClient rClient %% instance of lamda module
+      FridaServer frida %% Instance of FridaServer
+      FridaClient fClient %% Instance of FridaClient
+      installRpaServer(): bool
+      uninstallRpaServer(): bool
+      getRpaClient(): RpaClient
+      getFridaClient(): FridaClient
+      %% methods to interact with real device
+    }
+    class RpaServer {
+      bool is_running
+      start(): bool
+      stop(): bool
+    }
+    class FridaServer{
+      bool is_running
+      start(): bool
+      stop(): bool
+    }
+    class RpaClient {
+
+    }
+    class FridaClient {
+        
+    }

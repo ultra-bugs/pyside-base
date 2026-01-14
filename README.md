@@ -20,7 +20,7 @@ of code here is designed to encourage flexibility, reusability, and long-term sc
    * Controller & Handler: Separate UI and events
    * Service: Pure logic, UI-agnostic
    * Component & Widget Manager: Reusable, stateful
-   * Task System & Middleware: Automated, non-blocking UI
+   * Task System: Automated, non-blocking UI
 5. [CLI Scaffolding: Speed & Consistency](#cli-scaffolding-speed--consistency)
 6. [Theme & Configuration: Self-Service](#theme--configuration-self-service)
 7. [Observer Pattern: Decoupled Communication](#observer-pattern-decoupled-communication)
@@ -59,8 +59,10 @@ Get your app skeleton ready with the right mindset:
    ```bash
    git clone <your-new-repo-url> my-app
    cd my-app
-   pip install -r requirements.txt
+   pixi install
    ```
+
+   > For full Pixi usage, see docs/provided-by-base/pixi-usage.md
 
 3. **Set Basic Info**
 
@@ -84,6 +86,7 @@ Get your app skeleton ready with the right mindset:
 ```
 base/
 ├── core/             # Framework & template patterns
+│   └── taskSystem/   # Task management system
 ├── windows/          # Views, controllers and event handlers
 │   ├── components/   # Reusable UI components (widgets)
 │   └── main/         # Main window
@@ -94,6 +97,7 @@ base/
 │   └── icon.png      # Default application icon
 ├── data/             # User data and embedded app data
 │   ├── config/       # Configuration files
+│   ├── tasks/        # Task storage
 │   └── logs/         # Log files
 ├── vendor/           # Third-party resources
 └── plugins/          # App plugins
@@ -159,16 +163,22 @@ widget_manager.set('slider.value', 50, save_to_config=True)
 
 ---
 
-### Task System & Middleware: Automated & Non-Blocking UI
+### Task System: Automated & Non-Blocking UI
 
-* Supports multi-threading, scheduling, and chainable middleware.
-* Breaks workflows into `TaskStep`s for easy monitoring, retries, logging, and captcha handling.
+* Supports multi-threading, scheduling, and task chaining.
+* Provides robust retry logic, persistence, and progress tracking.
 
 ```python
-task = task_manager.create_task("SyncData")
-task.add_step(FetchStep())
-task.add_step(ProcessStep())
-task_manager.run_task(task)
+# Add a task
+task = AdbCommandTask(name="Install APK", command="install app.apk")
+taskManager.addTask(task)
+
+# Create a chain of tasks
+chain = taskManager.addChainTask(
+    name="Workflow",
+    tasks=[task1, task2],
+    retryBehaviorMap={'Task1': ChainRetryBehavior.SKIP_TASK}
+)
 ```
 
 > **Mindset**: Offload heavy tasks to the background; keep the UI responsive.
@@ -186,7 +196,7 @@ python scripts/generate.py service MyService
 
 > **Mindset**: Enforce naming and structure conventions, reduce boilerplate time.
 > 
-For full list scripts/commands. See [CLI.md](./docs/CLI.md)
+For full list scripts/commands. See [CLI.md](docs/provided-by-base/CLI.md)
 
 ---
 

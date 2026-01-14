@@ -49,7 +49,15 @@ def main():
             logger.info(f"Application version set to: {args.version}")
         
         config.save()
-    
+        from core.Utils import PathHelper
+        if not PathHelper.isFileExists(".env"):
+            env_example_path = project_root / ".env.example"
+            env_path = project_root / ".env"
+            try:
+                env_path.write_text(env_example_path.read_text())
+                logger.info(f"Copied {env_example_path} to {env_path}")
+            except Exception as copy_e:
+                logger.error(f"Failed to copy .env.example to .env: {copy_e}")
     except Exception as e:
         logger.error(f"Failed to set app info: {e}")
         sys.exit(1)

@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~             M""""""""`M            dP
+  ~             Mmmmmm   .M            88
+  ~             MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
+  ~             MMP  .MMMMM  88    88  88888"    88'  `88
+  ~             M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
+  ~             M         M  `88888P'  dP   `YP  `88888P'
+  ~             MMMMMMMMMMM    -*-  Created by Zuko  -*-
+  ~
+  ~             * * * * * * * * * * * * * * * * * * * * *
+  ~             * -    - -   F.R.E.E.M.I.N.D   - -    - *
+  ~             * -  Copyright © 2025 (Z) Programing  - *
+  ~             *    -  -  All Rights Reserved  -  -    *
+  ~             * * * * * * * * * * * * * * * * * * * * *
+  -->
+
+<ui version="4.0">
+    <class>MainWindow</class>
+    <widget class="QMainWindow" name="MainWindow">
+        <property name="geometry">
+            <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>900</width>
+                <height>650</height>
+            </rect>
+        </property>
+        <property name="windowTitle">
+            <string>MainWindow</string>
+        </property>
+        <widget class="QWidget" name="centralwidget">
+            <layout class="QVBoxLayout" name="verticalLayout">
+                <item>
+                    <widget class="QTabWidget" name="tabWidget">
+                        <property name="currentIndex">
+                            <number>0</number>
+                        </property>
+                        <widget class="QWidget" name="tabTasks">
+                            <attribute name="title">
+                                <string>Tasks</string>
+                            </attribute>
+                            <layout class="QVBoxLayout" name="verticalLayout_2">
+                                <item>
+                                    <widget class="QGroupBox" name="groupBoxActions">
+                                        <property name="title">
+                                            <string>Basic Tasks</string>
+                                        </property>
+                                        <layout class="QHBoxLayout" name="horizontalLayout">
+                                            <item>
+                                                <widget class="QPushButton" name="btnAddSimpleTask">
+                                                    <property name="text">
+                                                        <string>Add Simple Task</string>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                            <item>
+                                                <widget class="QPushButton" name="btnAddScheduledTask">
+                                                    <property name="text">
+                                                        <string>Add Scheduled Task (15s)</string>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                            <item>
+                                                <widget class="QPushButton" name="btnAddConditionTask">
+                                                    <property name="text">
+                                                        <string>Add Condition Task</string>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                            <item>
+                                                <widget class="QPushButton" name="btnAddLoopTask">
+                                                    <property name="text">
+                                                        <string>Add Loop Task</string>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                        </layout>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QGroupBox" name="groupBoxConcurrent">
+                                        <property name="title">
+                                            <string>Concurrent Execution</string>
+                                        </property>
+                                        <layout class="QHBoxLayout" name="horizontalLayout_2">
+                                            <item>
+                                                <widget class="QPushButton" name="btnAddConcurrentTasks">
+                                                    <property name="text">
+                                                        <string>Run 5 Concurrent Tasks</string>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                            <item>
+                                                <widget class="QPushButton" name="btnAddCpuIntensiveTask">
+                                                    <property name="text">
+                                                        <string>Add CPU Intensive Task</string>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                            <item>
+                                                <widget class="QPushButton" name="btnAddChainTask">
+                                                    <property name="text">
+                                                        <string>Add Chain Task</string>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                            <item>
+                                                <widget class="QPushButton" name="btnAddRetryChainTask">
+                                                    <property name="text">
+                                                        <string>Add Retry Chain</string>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                            <item>
+                                                <widget class="QLabel" name="lblActiveTasks">
+                                                    <property name="text">
+                                                        <string>Active Tasks: 0/10</string>
+                                                    </property>
+                                                </widget>
+                                            </item>
+                                        </layout>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QTableWidget" name="tableTasks">
+                                        <property name="selectionBehavior">
+                                            <enum>QAbstractItemView::SelectRows</enum>
+                                        </property>
+                                        <column>
+                                            <property name="text">
+                                                <string>ID</string>
+                                            </property>
+                                        </column>
+                                        <column>
+                                            <property name="text">
+                                                <string>Name</string>
+                                            </property>
+                                        </column>
+                                        <column>
+                                            <property name="text">
+                                                <string>Status</string>
+                                            </property>
+                                        </column>
+                                        <column>
+                                            <property name="text">
+                                                <string>Progress</string>
+                                            </property>
+                                        </column>
+                                        <column>
+                                            <property name="text">
+                                                <string>Created</string>
+                                            </property>
+                                        </column>
+                                    </widget>
+                                </item>
+                            </layout>
+                        </widget>
+                        <widget class="QWidget" name="tabSchedules">
+                            <attribute name="title">
+                                <string>Schedules</string>
+                            </attribute>
+                            <layout class="QVBoxLayout" name="verticalLayout_3">
+                                <item>
+                                    <widget class="QTableWidget" name="tableSchedules">
+                                        <property name="selectionBehavior">
+                                            <enum>QAbstractItemView::SelectRows</enum>
+                                        </property>
+                                        <column>
+                                            <property name="text">
+                                                <string>Task ID</string>
+                                            </property>
+                                        </column>
+                                        <column>
+                                            <property name="text">
+                                                <string>Task Name</string>
+                                            </property>
+                                        </column>
+                                        <column>
+                                            <property name="text">
+                                                <string>Status</string>
+                                            </property>
+                                        </column>
+                                        <column>
+                                            <property name="text">
+                                                <string>Next Run</string>
+                                            </property>
+                                        </column>
+                                        <column>
+                                            <property name="text">
+                                                <string>Remaining</string>
+                                            </property>
+                                        </column>
+                                    </widget>
+                                </item>
+                            </layout>
+                        </widget>
+                        <widget class="QWidget" name="tabLogs">
+                            <attribute name="title">
+                                <string>Logs</string>
+                            </attribute>
+                            <layout class="QVBoxLayout" name="verticalLayout_4">
+                                <item>
+                                    <widget class="QTextEdit" name="txtLogs">
+                                        <property name="readOnly">
+                                            <bool>true</bool>
+                                        </property>
+                                    </widget>
+                                </item>
+                            </layout>
+                        </widget>
+                    </widget>
+                </item>
+            </layout>
+        </widget>
+        <widget class="QMenuBar" name="menubar">
+            <property name="geometry">
+                <rect>
+                    <x>0</x>
+                    <y>0</y>
+                    <width>900</width>
+                    <height>22</height>
+                </rect>
+            </property>
+            <widget class="QMenu" name="menuFile">
+                <property name="title">
+                    <string>File</string>
+                </property>
+                <addaction name="actionExit"/>
+            </widget>
+            <widget class="QMenu" name="menuTask">
+                <property name="title">
+                    <string>Task</string>
+                </property>
+                <addaction name="actionNewTask"/>
+                <addaction name="actionNewScheduledTask"/>
+                <addaction name="separator"/>
+                <addaction name="actionRunConcurrentTasks"/>
+                <addaction name="actionCpuIntensiveTask"/>
+            </widget>
+            <addaction name="menuFile"/>
+            <addaction name="menuTask"/>
+        </widget>
+        <widget class="QStatusBar" name="statusbar"/>
+        <action name="actionExit">
+            <property name="text">
+                <string>Exit</string>
+            </property>
+        </action>
+        <action name="actionNewTask">
+            <property name="text">
+                <string>New Task</string>
+            </property>
+        </action>
+        <action name="actionNewScheduledTask">
+            <property name="text">
+                <string>New Scheduled Task</string>
+            </property>
+        </action>
+        <action name="actionRunConcurrentTasks">
+            <property name="text">
+                <string>Run Concurrent Tasks</string>
+            </property>
+        </action>
+        <action name="actionCpuIntensiveTask">
+            <property name="text">
+                <string>CPU Intensive Task</string>
+            </property>
+        </action>
+    </widget>
+    <resources/>
+    <connections/>
+</ui>

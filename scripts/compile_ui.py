@@ -1,54 +1,29 @@
-#!/usr/bin/env python3
-
-#              M""""""""`M            dP
-#              Mmmmmm   .M            88
-#              MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
-#              MMP  .MMMMM  88    88  88888"    88'  `88
-#              M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
-#              M         M  `88888P'  dP   `YP  `88888P'
-#              MMMMMMMMMMM    -*-  Created by Zuko  -*-
-#
-#              * * * * * * * * * * * * * * * * * * * * *
-#              * -    - -   F.R.E.E.M.I.N.D   - -    - *
-#              * -  Copyright © 2024 (Z) Programing  - *
-#              *    -  -  All Rights Reserved  -  -    *
-#              * * * * * * * * * * * * * * * * * * * * *
-
 import glob
 import os
 
-
-def compile_ui_file(ui_file):
+def compileUiFile(uiFile):
     """Compile a .ui file to Python code"""
-    py_file = ui_file.replace('.ui', '.py')
-    os.system(f'pyside6-uic {ui_file} -o {py_file}')
-    print(f'Compiled {ui_file} -> {py_file}')
+    pyFile = uiFile.replace('.ui', '.py')
+    os.system(f'pyside6-uic {uiFile} -o {pyFile}')
+    print(f'Compiled {uiFile} -> {pyFile}')
 
-
-def compile_qrc_file(qrc_file):
+def compileQrcFile(qrcFile):
     """Compile a .qrc file to Python code"""
-    py_file = qrc_file.replace('.qrc', '_rc.py')
-    os.system(f'pyside6-rcc {qrc_file} -o {py_file}')
-    print(f'Compiled {qrc_file} -> {py_file}')
+    pyFile = qrcFile.replace('.qrc', '_rc.py')
+    os.system(f'pyside6-rcc {qrcFile} -o {pyFile}')
+    print(f'Compiled {qrcFile} -> {pyFile}')
 
-
-def find_files(pattern):
+def findFiles(pattern):
     """Find all files matching pattern"""
-    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    return glob.glob(os.path.join(base_path, '**', pattern), recursive=True)
-
+    basePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return glob.glob(os.path.join(basePath, '**', pattern), recursive=True)
 
 def main():
-    # Compile UI files
-    ui_files = find_files('*.ui')
-    for ui_file in ui_files:
-        compile_ui_file(ui_file)
-    
-    # Compile QRC files
-    qrc_files = find_files('*.qrc')
-    for qrc_file in qrc_files:
-        compile_qrc_file(qrc_file)
-
-
+    uiFiles = findFiles('*.ui')
+    for uiFile in uiFiles:
+        compileUiFile(uiFile)
+    qrcFiles = findFiles('*.qrc')
+    for qrcFile in qrcFiles:
+        compileQrcFile(qrcFile)
 if __name__ == '__main__':
     main()

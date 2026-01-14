@@ -12,5 +12,9 @@
   "logging": {
     "level": "INFO",
     "file": "app.log"
+  },
+  "consolelog": {
+    "level": "DEBUG",
+    "enable": true
   }
 }

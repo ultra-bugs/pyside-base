@@ -19,7 +19,7 @@
    * Controller & Handler: Tách biệt UI và sự kiện
    * Service: Logic thuần, không phụ thuộc UI
    * Component & Quản lý Widget: Có trạng thái, tái sử dụng
-   * Hệ thống Task & Middleware: Tự động hóa, không chặn UI
+   * Hệ thống Task: Tự động hóa, không chặn UI
 5. [CLI Scaffolding: Nhanh & Đồng Nhất](#cli-scaffolding-speed--consistency)
 6. [Giao Diện & Cấu Hình: Tự Điều Chỉnh](#theme--configuration-self-service)
 7. [Observer Pattern: Giao Tiếp Tách Biệt](#observer-pattern-decoupled-communication)
@@ -55,8 +55,10 @@ Chuẩn bị khung ứng dụng với tư duy đúng:
    ```bash
    git clone <your-new-repo-url> my-app
    cd my-app
-   pip install -r requirements.txt
+   pixi install
    ```
+
+   > Xem hướng dẫn chi tiết Pixi tại docs/provided-by-base/pixi-usage.md
 
 3. **Cài Đặt Thông Tin Cơ Bản**
 
@@ -80,6 +82,7 @@ Chuẩn bị khung ứng dụng với tư duy đúng:
 ```
 base/
 ├── core/             # Framework & mẫu thiết kế
+│   └── taskSystem/   # Hệ thống quản lý tác vụ
 ├── windows/          # View, controller và xử lý sự kiện
 │   ├── components/   # Thành phần UI có thể tái sử dụng (widget)
 │   └── main/         # Cửa sổ chính
@@ -90,6 +93,7 @@ base/
 │   └── icon.png      # Biểu tượng mặc định
 ├── data/             # Dữ liệu người dùng và dữ liệu nhúng của ứng dụng
 │   ├── config/       # Tập tin cấu hình
+│   ├── tasks/        # Lưu trữ tác vụ
 │   └── logs/         # Tập tin log
 ├── vendor/           # Tài nguyên bên thứ ba
 └── plugins/          # Plugin cho ứng dụng
@@ -153,16 +157,22 @@ widget_manager.set('slider.value', 50, save_to_config=True)
 
 ---
 
-### Hệ Thống Task & Middleware: Tự Động Hóa & Không Chặn UI
+### Hệ Thống Task: Tự Động Hóa & Không Chặn UI
 
-* Hỗ trợ đa luồng, lập lịch, middleware chuỗi.
-* Quy trình công việc được chia thành `TaskStep` để dễ theo dõi, thử lại, log, và xử lý captcha.
+* Hỗ trợ đa luồng, lập lịch, và chuỗi tác vụ (task chaining).
+* Cung cấp logic thử lại mạnh mẽ, lưu trữ bền vững, và theo dõi tiến độ.
 
 ```python
-task = task_manager.create_task("SyncData")
-task.add_step(FetchStep())
-task.add_step(ProcessStep())
-task_manager.run_task(task)
+# Thêm một tác vụ
+task = AdbCommandTask(name="Install APK", command="install app.apk")
+taskManager.addTask(task)
+
+# Tạo một chuỗi tác vụ
+chain = taskManager.addChainTask(
+    name="Workflow",
+    tasks=[task1, task2],
+    retryBehaviorMap={'Task1': ChainRetryBehavior.SKIP_TASK}
+)
 ```
 
 > **Tư Duy**: Đưa tác vụ nặng ra nền; giữ UI luôn mượt mà.
@@ -180,7 +190,7 @@ python scripts/generate.py service MyService
 
 > **Tư Duy**: Cưỡng chế quy tắc đặt tên và cấu trúc, giảm thời gian viết mã mẫu.
 
-Xem thêm tại [CLI.md](./docs/CLI.md)
+Xem thêm tại [CLI.md](docs/provided-by-base/CLI.md)
 
 ---
 

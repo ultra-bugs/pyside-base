@@ -1,4 +1,8 @@
 PySide6>=6.5.0
 python-dotenv>=1.0.0
 loguru>=0.7.0
-pyqtdarktheme>=2.1.0 
+pyqtdarktheme>=2.1.0
+case-converter>=1.2.0
+python-box>=7.3
+curl_cffi
+numpy
