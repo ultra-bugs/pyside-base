@@ -173,8 +173,10 @@ class TaskTracker(QtCore.QObject):
 
     def loadState(self):
         try:
-            self._failedTaskHistory = self._storage.load('failedTaskHistory', []) or []
-            self._completedTaskHistory = self._storage.load('completedTaskHistory', []) or []
+            val_failed = self._storage.load('failedTaskHistory', [])
+            self._failedTaskHistory = val_failed if isinstance(val_failed, list) else []
+            val_completed = self._storage.load('completedTaskHistory', [])
+            self._completedTaskHistory = val_completed if isinstance(val_completed, list) else []
         except Exception as e:
             logger.error(f'Load state failed: {e}')
             self._failedTaskHistory = []

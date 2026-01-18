@@ -13,6 +13,7 @@ from .TaskQueue import TaskQueue
 from .TaskScheduler import TaskScheduler
 from .TaskStatus import TaskStatus
 from .TaskTracker import TaskTracker
+from .storage import BaseStorage
 from .storage.JsonStorage import JsonStorage
 from ..Config import Config
 from ..Logging import logger
@@ -48,7 +49,7 @@ class TaskManagerService(QtCore.QObject):
     failedTaskLogged = QtCore.Signal(dict)
     systemReady = QtCore.Signal()
 
-    def __init__(self, publisher: Publisher, config: Config):
+    def __init__(self, publisher: Publisher, config: Config, storage: Optional[BaseStorage] = None):
         """
         Initialize TaskManagerService.
         Args:
@@ -59,7 +60,7 @@ class TaskManagerService(QtCore.QObject):
         QtCore.QObject.__init__(self)
         self._publisher = publisher
         self._config = config
-        self._storage = JsonStorage()
+        self._storage = storage or JsonStorage()
         logger.info('Initializing TaskManagerService subsystems...')
         self._taskTracker = TaskTracker(self._storage)
         self._taskQueue = TaskQueue(self._taskTracker, self._storage, config)
@@ -236,6 +237,8 @@ class TaskManagerService(QtCore.QObject):
         Args:
             count: Maximum concurrent tasks (must be > 0)
         """
+        if count is None:
+            return
         logger.info(f'Setting max concurrent tasks to: {count}')
         self._taskQueue.setMaxConcurrentTasks(count)
 

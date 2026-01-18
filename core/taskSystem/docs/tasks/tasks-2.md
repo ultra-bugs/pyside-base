@@ -44,7 +44,7 @@
 - Scheduler jobs persist and survive application restarts; manual timers removed/migrated.
 - UI reflects live task status/progress via subscribed signals without polling.
 - Logger usage conforms to project policy with contextual data; no `print` statements remain.
-- Pytest suite updated with passing coverage for new flows (`tests_auto/task_system/`).
+- Pytest suite updated with passing coverage for new flows (`tests_core/task_system/`).
 - Documentation updated to reflect final architecture and integration touchpoints.
 ```
 

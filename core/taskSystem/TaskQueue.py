@@ -102,6 +102,8 @@ class TaskQueue(QtCore.QObject):
         Args:
             count: Maximum concurrent tasks (must be > 0)
         """
+        if count is None:
+            return
         if count <= 0:
             logger.warning(f'Invalid max concurrent tasks: {count}. Must be > 0')
             return

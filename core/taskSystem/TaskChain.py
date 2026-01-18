@@ -109,6 +109,9 @@ class TaskChain(AbstractTask, Subscriber):
         5. Updates progress
         """
         logger.info(f'TaskChain {self.uuid} - {self.name} starting execution')
+        if not self._tasks:
+            self._updateDefaultProgress()
+            return
         while self._currentTaskIndex < len(self._tasks):
             if self.isStopped():
                 self.setStatus(TaskStatus.CANCELLED)
@@ -119,6 +122,11 @@ class TaskChain(AbstractTask, Subscriber):
             task.setChainContext(self._chainContext)
             logger.info(f'TaskChain {self.uuid} executing task {self._currentTaskIndex + 1}/{len(self._tasks)}: {task.name}')
             isTaskSuccess = self._executeSubTaskWithRetry(task)
+            if self.isStopped() or task.status == TaskStatus.CANCELLED:
+                if self.status != TaskStatus.FAILED:
+                    self.setStatus(TaskStatus.CANCELLED)
+                logger.info(f'TaskChain {self.uuid} was cancelled or sub-task was cancelled')
+                return
             if not isTaskSuccess:
                 taskClassName = task.__class__.__name__
                 chainBehavior = self.retryBehaviorMap.get(taskClassName, ChainRetryBehavior.STOP_CHAIN)
@@ -163,11 +171,15 @@ class TaskChain(AbstractTask, Subscriber):
         attempts = 0
         maxAttempts = task.maxRetries + 1
         while attempts < maxAttempts:
+            if self.isStopped():
+                return False
             if attempts > 0:
                 self.setStatus(TaskStatus.RETRYING)
                 logger.info(f"TaskChain {self.uuid}: Retrying sub-task '{task.name}' (Attempt {attempts}/{task.maxRetries}).")
                 time.sleep(task.retryDelaySeconds)
                 self.setStatus(TaskStatus.RUNNING)
+            if self.isStopped():
+                return False
             task.setStatus(TaskStatus.PENDING)
             try:
                 task.run()
@@ -176,9 +188,10 @@ class TaskChain(AbstractTask, Subscriber):
                     self._taskStates[task.uuid]['result'] = task.result
                     logger.info(f"TaskChain {self.uuid}: Sub-task '{task.name}' completed successfully")
                     return True
+                if task.status == TaskStatus.CANCELLED or self.isStopped():
+                    return False
             except TaskFailedException as e:
                 logger.error(f"TaskChain {self.uuid}: Sub-task '{task.name}' crashed with exception.", exc_info=True)
-                # return False
             except Exception as e:
                 task.fail(str(e))
                 logger.error(f"TaskChain {self.uuid}: Sub-task '{task.name}' crashed with exception.", exc_info=True)

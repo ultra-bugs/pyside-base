@@ -7,7 +7,7 @@ dependencies = []
 
 [tool.ruff]
 line-length = 180
-include = ["core/**/*.py", "app/**/*.py", "scripts/*.py"]
+include = ["core/**/*.py", "app/**/*.py", "scripts/*.py", "tests/**/*.py", "tests_core/**/*.py"]
 exclude = ["packages"]
 [tool.ruff.format]
 quote-style = "single"

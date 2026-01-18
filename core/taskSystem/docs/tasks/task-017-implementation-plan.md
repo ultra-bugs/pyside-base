@@ -34,7 +34,7 @@
 - `windows/components/TaskSelector/*` (enumerate new task registry from `services.tasks`)
 - `helpers/AppHelper` / `QtAppContext` (ensure TaskManagerService registered)
 - `docs/` updates (API, scheduler adjustments, migration notes)
-- `tests_auto/` (new fixtures/tests for TaskSystem flows)
+- `tests_core/` (new fixtures/tests for TaskSystem flows)
 
 ### Implementation Steps
 

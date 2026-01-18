@@ -8,9 +8,9 @@ Usage:
     python scripts/run_pytest.py [pytest arguments]
 
 Example:
-    python scripts/run_pytest.py tests_auto/task_system/
+    python scripts/run_pytest.py tests_core/task_system/
     python scripts/run_pytest.py --version
-    python scripts/run_pytest.py tests_auto/task_system/ -v --cov=core.taskSystem
+    python scripts/run_pytest.py tests_core/task_system/ -v --cov=core.taskSystem
 """
 
 #              M""""""""`M            dP
@@ -48,8 +48,19 @@ if os.getcwd() != str(project_root):
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-# Now import and run pytest
-import pytest
+
+def run_test(iniPath=None, args=None):
+    # Now import and run pytest
+    import pytest
+    if args is None:
+        args = sys.argv[1:]
+    if iniPath is None:
+        iniPath = project_root / 'tests' / 'pytest.ini'
+    if iniPath.exists() and '-c' not in args:
+        args.extend(['-c', str(iniPath)])
+    return sys.exit(pytest.main(args))
+
 
 if __name__ == '__main__':
-    sys.exit(pytest.main(sys.argv[1:]))
+    # Default to tests/pytest.ini if it exists and no config is specified
+    run_test()

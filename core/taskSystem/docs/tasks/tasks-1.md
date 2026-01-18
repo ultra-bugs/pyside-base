@@ -54,7 +54,7 @@ Files to Create/Modify:
 - Logger initialized as "TaskSystem"
 **Acceptance Criteria**:
 - Enum available for import and used by other components
-- Unit test added: tests_auto/task_system/test_TaskStatus.py validating membership and uniqueness
+- Unit test added: tests_core/task_system/test_TaskStatus.py validating membership and uniqueness
 ```
 
 ### Task ID: 003
@@ -72,7 +72,7 @@ Files to Create/Modify:
 - Logger initialized as "TaskSystem"
 **Acceptance Criteria**:
 - Exceptions raise and are catchable in tests
-- Unit test: tests_auto/task_system/test_Exceptions.py
+- Unit test: tests_core/task_system/test_Exceptions.py
 ```
 
 ### Task ID: 004
@@ -111,7 +111,7 @@ run() override:
 - Use logger "TaskSystem" throughout
 - CamelCase for method and attribute names; no snake_case anywhere
 **Acceptance Criteria**:
-- Unit tests: tests_auto/task_system/test_AbstractTask.py covering status transitions, cancellation, and signal emissions via Qt Test utilities
+- Unit tests: tests_core/task_system/test_AbstractTask.py covering status transitions, cancellation, and signal emissions via Qt Test utilities
 ```
 
 ### Task ID: 005
@@ -142,7 +142,7 @@ Methods:
 - Connect to task signals to update tracking and emit taskUpdated
 - Logger "TaskSystem"
 **Acceptance Criteria**:
-- Unit tests: tests_auto/task_system/test_TaskTracker.py mocking Config and verifying tracking and persistence
+- Unit tests: tests_core/task_system/test_TaskTracker.py mocking Config and verifying tracking and persistence
 ```
 
 ### Task ID: 006
@@ -170,7 +170,7 @@ Methods:
 - Submit tasks to QThreadPool; wire completion to retry with TaskScheduler if needed
 - Logger "TaskSystem"
 **Acceptance Criteria**:
-- Unit tests: tests_auto/task_system/test_TaskQueue.py covering enqueue/dequeue, concurrency windows, retry path
+- Unit tests: tests_core/task_system/test_TaskQueue.py covering enqueue/dequeue, concurrency windows, retry path
 ```
 
 ### Task ID: 007
@@ -195,7 +195,7 @@ Methods:
 - Logger "TaskSystem"
 - Proper parameter validation
 **Acceptance Criteria**:
-- Unit tests: tests_auto/task_system/test_TaskScheduler.py using a test job store or in-memory store
+- Unit tests: tests_core/task_system/test_TaskScheduler.py using a test job store or in-memory store
 ```
 
 ### Task ID: 008
@@ -229,7 +229,7 @@ Methods:
 **Requirements**:
 - Logger "TaskSystem"; Observer-based decoupled communication
 **Acceptance Criteria**:
-- Unit tests: tests_auto/task_system/test_TaskManagerService.py mocking publisher and verifying orchestration
+- Unit tests: tests_core/task_system/test_TaskManagerService.py mocking publisher and verifying orchestration
 ```
 
 ### Task ID: 009
@@ -250,7 +250,7 @@ Methods:
 **Requirements**:
 - Logger "TaskSystem"; periodic progress updates; check isStopped() frequently
 **Acceptance Criteria**:
-- Unit tests: tests_auto/task_system/test_AdbCommandTask.py using fakes/mocks for AndroidManagerService and subprocess
+- Unit tests: tests_core/task_system/test_AdbCommandTask.py using fakes/mocks for AndroidManagerService and subprocess
 ```
 
 ### Task ID: 010
@@ -266,7 +266,7 @@ Methods:
 **Requirements**:
 - Logger "TaskSystem"
 **Acceptance Criteria**:
-- Unit tests: tests_auto/task_system/test_RpaScriptTask.py verifying lifecycle hooks exist and serialization roundtrip works
+- Unit tests: tests_core/task_system/test_RpaScriptTask.py verifying lifecycle hooks exist and serialization roundtrip works
 ```
 
 ### Task ID: 011
@@ -283,7 +283,7 @@ Methods:
 - No print usage
 - Log contextual identifiers for async/threaded flows when possible (thread id, task uuid)
 **Acceptance Criteria**:
-- Unit tests: tests_auto/task_system/test_LoggingIntegration.py asserting logger is invoked at key points (use monkeypatch/mocks)
+- Unit tests: tests_core/task_system/test_LoggingIntegration.py asserting logger is invoked at key points (use monkeypatch/mocks)
 ```
 
 ### Task ID: 012
@@ -332,13 +332,13 @@ Methods:
 - Logger "TaskSystem"
 - Do not couple directly to UI; use Observer
 **Acceptance Criteria**:
-- Unit tests: tests_auto/task_system/test_AppIntegration.py using minimal context boot
+- Unit tests: tests_core/task_system/test_AppIntegration.py using minimal context boot
 ```
 
 ### Task ID: 015
 
 - **Title**: Test suite scaffolding for TaskSystem
-- **File**: tests_auto/conftest.py
+- **File**: tests_core/conftest.py
 - **Complete**: [x]
 
 #### Prompt:

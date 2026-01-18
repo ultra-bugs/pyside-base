@@ -1,0 +1,8 @@
+# Test dependencies for "UltraBugz pyside-base"
+# This list present only for backwack compablity
+# Use pixi env: `tests` instead
+pytest>=7.0.0
+pytest-qt>=4.2.0
+pytest-cov>=4.0.0
+pytest-mock>=3.10.0
+

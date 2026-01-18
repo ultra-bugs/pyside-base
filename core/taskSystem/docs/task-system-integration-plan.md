@@ -67,7 +67,7 @@ flowchart TD
 
 - Follow the [Testing Guide](mdc:core/taskSystem/docs/testing.md) to run pytest suites via `scripts/run_pytest.py`.
 - Add scenario coverage for:
-  - Immediate queue execution (`tests_auto/task_system/test_TaskQueue.py`).
+  - Immediate queue execution (`tests_core/task_system/test_TaskQueue.py`).
   - Scheduler triggers with MemoryJobStore mocks.
   - TaskTracker persistence and failed task history.
   - Observer-driven end-to-end flows (integration tests).

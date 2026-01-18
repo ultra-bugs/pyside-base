@@ -14,7 +14,7 @@
 - `windows/main/MainControllerHandler.py`: Fetches and replays tasks using TaskManagerService data; updates task list on TaskSystem signals.
 - `windows/main/MainController.py`: Displays TaskManagerService task summaries with status/progress derived from serialized data.
 - `main.py` / `main_v1.py`: Application context now stores `taskManagerService`; legacy scheduler service references removed.
-- `tests_auto/task_system/test_StepSequenceTask.py`: Added coverage to ensure step sequence execution and serialization.
+- `tests_core/task_system/test_StepSequenceTask.py`: Added coverage to ensure step sequence execution and serialization.
 - `core/TaskSystem.py`: Removed obsolete implementation.
 
 ## Current Behavior

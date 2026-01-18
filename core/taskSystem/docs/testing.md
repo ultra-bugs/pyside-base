@@ -8,22 +8,22 @@ Due to a `pyreadline` compatibility issue with Python 3.10+, use the wrapper scr
 
 ```powershell
 # Run all TaskSystem tests
-python scripts/run_pytest.py tests_auto/task_system/
+python scripts/run_pytest.py tests_core/task_system/
 
 # Run with verbose output
-python scripts/run_pytest.py tests_auto/task_system/ -v
+python scripts/run_pytest.py tests_core/task_system/ -v
 
 # Run with coverage
-python scripts/run_pytest.py tests_auto/task_system/ --cov=core.taskSystem --cov=services.tasks --cov-report=html
+python scripts/run_pytest.py tests_core/task_system/ --cov=core.taskSystem --cov=services.tasks --cov-report=html
 
 # Run specific test file
-python scripts/run_pytest.py tests_auto/task_system/test_AbstractTask.py
+python scripts/run_pytest.py tests_core/task_system/test_AbstractTask.py
 
 # Run specific test
-python scripts/run_pytest.py tests_auto/task_system/test_AbstractTask.py::test_task_initialization
+python scripts/run_pytest.py tests_core/task_system/test_AbstractTask.py::test_task_initialization
 
 # Or with pixi
-pixi run python scripts/run_pytest.py tests_auto/task_system/
+pixi run python scripts/run_pytest.py tests_core/task_system/
 ```
 
 ### Linux/macOS Users
@@ -31,15 +31,15 @@ pixi run python scripts/run_pytest.py tests_auto/task_system/
 You can use pytest directly:
 
 ```bash
-pytest tests_auto/task_system/
-pytest tests_auto/task_system/ -v
-pytest tests_auto/task_system/ --cov=core.taskSystem --cov=services.tasks
+pytest tests_core/task_system/
+pytest tests_core/task_system/ -v
+pytest tests_core/task_system/ --cov=core.taskSystem --cov=services.tasks
 ```
 
 ## Test Structure
 
 ```
-tests_auto/
+tests_core/
 ├── conftest.py                    # Pytest configuration and fixtures
 ├── pytest.ini                     # Pytest settings
 ├── requirements.txt               # Test dependencies
@@ -114,10 +114,10 @@ Run specific markers:
 
 ```bash
 # Skip slow tests
-pixi run python run_pytest.py tests_auto/ -m "not slow"
+pixi run python run_pytest.py tests_core/ -m "not slow"
 
 # Run only integration tests
-pixi run python run_pytest.py tests_auto/ -m "integration"
+pixi run python run_pytest.py tests_core/ -m "integration"
 ```
 
 ## Coverage Reports
@@ -125,7 +125,7 @@ pixi run python run_pytest.py tests_auto/ -m "integration"
 Generate HTML coverage report:
 
 ```bash
-pixi run python run_pytest.py tests_auto/task_system/ --cov=core.taskSystem --cov=services.tasks --cov-report=html
+pixi run python run_pytest.py tests_core/task_system/ --cov=core.taskSystem --cov=services.tasks --cov-report=html
 ```
 
 Open `htmlcov/index.html` in browser to view detailed coverage.
@@ -196,7 +196,7 @@ Tests can be run in CI/CD pipelines:
 # Example GitHub Actions
 - name: Run tests
   run: |
-    pixi run python run_pytest.py tests_auto/ --cov=core --cov=services --cov-report=xml
+    pixi run python run_pytest.py tests_core/ --cov=core --cov=services --cov-report=xml
 ```
 
 ## Adding New Tests
@@ -210,7 +210,7 @@ Tests can be run in CI/CD pipelines:
 Example:
 
 ```python
-# tests_auto/task_system/test_NewFeature.py
+# tests_core/task_system/test_NewFeature.py
 
 import pytest
 from ..taskSystem import TaskStatus

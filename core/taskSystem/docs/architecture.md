@@ -320,7 +320,7 @@ Config uses `QMutex` for thread-safe operations.
 ### Test Structure
 
 ```
-tests_auto/
+tests_core/
 ├── conftest.py           # Pytest fixtures
 ├── task_system/
 │   ├── test_TaskStatus.py
@@ -437,7 +437,7 @@ project/
 │   ├── main/
 │   └── components/
 ├── scripts/               # Dev tools
-├── tests_auto/            # Automated tests
+├── tests_core/            # Automated tests
 ├── docs/                  # Documentation
 └── main.py               # Entry point
 ```

@@ -481,7 +481,7 @@ def execute(self):
 - [Task Plan](./tasks/task-acknowledgment-mechanism.md) - Chi tiết implementation
 - [Architecture Diagrams](./diagrams/) - Kiến trúc và flow
 - [Example](../examples/VndClaimTaskWithAck.py) - Demo code hoàn chỉnh
-- [Tests](../tests_auto/integration/test_vnd_ack_workflow.py) - Integration tests
+- [Tests](../tests_core/integration/test_vnd_ack_workflow.py) - Integration tests
 
 ---
 
