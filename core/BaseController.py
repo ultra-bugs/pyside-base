@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from typing import Dict, List
 from PySide6 import QtCore
 from box import Box
+
+from core import Subscriber
 from core.Observer import Publisher
 from core.WidgetManager import WidgetManager
 
@@ -89,3 +91,9 @@ class BaseController(metaclass=ControllerMeta):
                     pass
                 self.publisher.subscribe(subscriber=subscriber, event=event)
         self.signal_connected = True
+
+class BaseCtlHandler(Subscriber):
+    def __init__(self, widgetManager: WidgetManager, events: List[str]):
+        Subscriber.__init__(self, events=events)
+        self.widgetManager: WidgetManager = widgetManager
+        self.controller: BaseController = widgetManager.controller

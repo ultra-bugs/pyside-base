@@ -29,14 +29,63 @@ jobs:
           # Remove template-specific files
           rm -rf .github/workflows/template-cleanup.yml
           rm -rf .cursor
+          rm -rf .agent
           rm -rf .cursorrules
+          
+          # Clean submodules
+          git rm --cached .gitmodules
+          rm -rf .git/modules/*
+          
           # Update README
           sed -i "s|<your-new-repo-url>|${REPO_URL}|g" README.md
           sed -i "s|<your-new-repo-url>|${REPO_URL}|g" README.vi.md
           mv README.md README.base.md
           mv README.vi.md README.base.vi.md
+          # Create README on generated repo
+          
           echo "# ${REPO_URL}" > README.md
-          echo "Introduction, document about UltraBugz PysideBase. Please See [README.base.md](./README.base.md)" >> README.md
+          echo "" >> README.md
+          echo "[![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org/)" >> README.md
+          echo "[![Qt](https://img.shields.io/badge/Qt-PySide6-green)](https://doc.qt.io/qtforpython/)" >> README.md
+          echo "[![Generated from template](https://img.shields.io/badge/Generated%20from-template-008080?style=flat&logo=github&labelColor=8A2BE2)](https://github.com/ultra-bugs/pyside-base)" >> README.md
+          echo "" >> README.md
+          echo "---" >> README.md
+          echo "" >> README.md
+          
+          echo "## Overview" >> README.md
+          echo "" >> README.md
+          echo "This project was **generated from a reusable application base**, designed to speed up the development of" >> README.md
+          echo "Qt desktop applications using **PySide6 (Qt for Python)**." >> README.md
+          echo "" >> README.md
+          
+          echo "The base template provides:" >> README.md
+          echo "" >> README.md
+          echo "- A clean application structure" >> README.md
+          echo "- Event-driven architecture (Observer pattern)" >> README.md
+          echo "- CLI-based scaffolding tools" >> README.md
+          echo "- A background Task System for non-blocking workflows" >> README.md
+          echo "" >> README.md
+          
+          echo "## Base Template" >> README.md
+          echo "" >> README.md
+          echo "This repository is built on top of the following base framework:" >> README.md
+          echo "" >> README.md
+          echo "- **UltraBugz PySide Base**" >> README.md
+          echo "  - Repository: https://github.com/ultra-bugs/pyside-base" >> README.md
+          echo "" >> README.md
+          
+          echo "For detailed documentation about the framework itself, please read:" >> README.md
+          echo "" >> README.md
+          echo "- [README.base.md](./README.base.md)" >> README.md
+          echo "" >> README.md
+          echo "---" >> README.md
+          echo "" >> README.md
+          
+          echo "## Notes" >> README.md
+          echo "" >> README.md
+          echo "- This README focuses on **application-specific documentation**." >> README.md
+          echo "- Framework internals and architecture are documented in the base repository." >> README.md
+
           git add README*.md
           # Commit changes
           git config --global user.name 'GitHub Actions'

@@ -1,4 +1,9 @@
-# UltraBugz pyside_base - Desktop application ship faster
+# UltraBugz pyside_base — Ship Desktop Apps Faster
+
+[![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org/)
+[![Qt](https://img.shields.io/badge/Qt-PySide6-green)](https://doc.qt.io/qtforpython/)
+[![License](https://img.shields.io/badge/License-MIT-lightgrey)](./LICENSE)
+[![Template](https://img.shields.io/badge/GitHub-Template-orange)](https://github.com/ultra-bugs/pyside-base)
 
 > Also have a Tiếng Việt version of this README: [README.vi.md](./README.vi.md)
 
@@ -84,24 +89,38 @@ Get your app skeleton ready with the right mindset:
 ## Structure & Modular Spirit
 
 ```
-base/
-├── core/             # Framework & template patterns
-│   └── taskSystem/   # Task management system
-├── windows/          # Views, controllers and event handlers
-│   ├── components/   # Reusable UI components (widgets)
-│   └── main/         # Main window
-├── services/         # Independent business logic
-├── models/           # Reusable UI components
-├── scripts/          # CLI tools & scaffolding
-├── assets/           # Resources (images, sounds, translations)
-│   └── icon.png      # Default application icon
-├── data/             # User data and embedded app data
-│   ├── config/       # Configuration files
-│   ├── tasks/        # Task storage
-│   └── logs/         # Log files
-├── vendor/           # Third-party resources
-└── plugins/          # App plugins
+project_root/
+├── app/                  # 🏠 Application Logic (Userland)
+│   ├── components/       # UI Components specific to this app
+│   ├── controllers/      # Controllers for app logic
+│   └── ...               # Other app-specific files
+├── core/                 # ⚙️ Base Framework (Immutable Core)
+│   ├── BaseController/
+│   ├── TaskSystem/
+│   ├── WidgetManager/
+│   └── ...               # Core modules provided by the Base
+├── tests/                # 🧪 Application Tests
+│   └── ...               # Tests for your 'app/' directory
+├── tests_core/           # 🔬 Core Framework Tests
+│   └── ...               # Tests for 'core/' (Contributors/Authors only)
+└── docs/                 # 📚 Documentation
 ```
+
+### 🧠 Core Philosophy (`core/`)
+The `core` directory contains the foundational building blocks of the framework (TaskSystem, BaseController, etc.).
+- **Managed by Base**: This directory is maintained by the framework authors.
+- **Do Not Modify**: Avoid changing files here directly, as updates will overwrite changes.
+- **Extendable**: Use the components provided here to build your application in `app/`.
+
+### 🏠 Application Logic (`app/`)
+The `app` directory is your workspace.
+- **Your Code**: innovative features, UI logic, and business rules go here.
+- **Safe from Updates**: Changes in `core` will not touch your work in `app`.
+
+### 🧪 Testing Strategy
+We maintain a clear separation in testing as well:
+- **`tests/`**: Place all tests for your *application features* here.
+- **`tests_core/`**: Contains internal tests for the *framework itself*. Use this only if you are contributing to the Base Core.
 
 > **Mindset**: Each folder is an independent module, easy to test, develop in parallel, and swap without affecting the
 > system.
@@ -120,12 +139,12 @@ base/
 class MyController(BaseController):
    # Mapping show: when `pushButton` has been `clicked`. The method named `on_open_btn_click` on handler will be called
    slot_map = {
-      'open_btn_click': ['pushButton', 'clicked']
+      'openBtnClick': ['pushButton', 'clicked']
    }
 
 # in handler
 class MyControllerHandler(Subscriber):
-   def on_open_btn_click(self, data = None):
+   def onOpenBtnClick(self, data = None):
       # Event handling logic
       pass
 ```

@@ -13,7 +13,8 @@ class MainHandler(Subscriber):
     def __init__(self, widgetManager, events):
         super().__init__(events)
         self.widgetManager = widgetManager
-        self.controller = widgetManager.controller
+        self.controller = widgetManager.controllere
+        
         ctx = QtAppContext.globalInstance()
         self.taskManager = ctx.taskManager
         # self.EVENT_ADD_SIMPLE_TASK = 'add_simple_task'
