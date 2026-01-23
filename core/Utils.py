@@ -782,6 +782,29 @@ class PythonHelper:
         characters = string.ascii_letters + string.digits
         return ''.join((random.choice(characters) for _ in range(length)))
 
+    @staticmethod
+    def Async2Sync(coro):
+        """Run async coroutine synchronously using qasync event loop.
+        
+        This helper uses the qasync loop bootstrapped by QtAppContext.
+        Do NOT create new event loops - use the existing qasync loop.
+        
+        Args:
+            coro: Async coroutine to run
+            
+        Returns:
+            Result of the coroutine
+            
+        Example:
+            from core.Utils import PythonHelper
+            
+            # Run async function synchronously
+            result = PythonHelper.Async2Sync(myAsyncFunction())
+        """
+        import asyncio
+        loop = asyncio.get_event_loop()
+        return loop.run_until_complete(coro)
+
 
 def isInDebugEnv() -> bool:
     """

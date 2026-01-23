@@ -58,3 +58,21 @@ def setupLogging():
 
 
 logger = setupLogging()
+
+from contextlib import contextmanager
+
+
+@contextmanager
+def logContext(**kwargs):
+    """
+    Temporary logging context.
+
+    Usage:
+        with logContext(taskId=uuid, userId=123):
+            logger.info('Processing')  # Includes taskId and userId
+    """
+    logger_with_context = logger.bind(**kwargs)
+    try:
+        yield logger_with_context
+    finally:
+        pass

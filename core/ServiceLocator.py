@@ -11,10 +11,11 @@
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-from typing import Any, Dict, List, Optional, TypeVar
+from typing import Any, Dict, List, Optional,Type , TypeVar
 from PySide6.QtCore import QMutex, QMutexLocker, QObject
 from core.Logging import logger
 
+T = TypeVar('T')
 
 class ServiceLocator(QObject):
     """
@@ -43,7 +44,7 @@ class ServiceLocator(QObject):
                 logger.warning(f'Overwriting existing singleton service: {interface}')
             self._singletons[interface] = instance
 
-    def get(self, interface: str, default: Any = None) -> Any:
+    def get(self, interface: str, default: Optional[T] = None, serviceType: Type[T] = None) -> Optional[T]:
         """Retrieve a global singleton."""
         with QMutexLocker(self._lock):
             return self._singletons.get(interface, default)

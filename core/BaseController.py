@@ -4,7 +4,8 @@ from typing import Dict, List
 from PySide6 import QtCore
 from box import Box
 
-from core import Subscriber
+from core.Logging import logger
+from core.Observer import Subscriber
 from core.Observer import Publisher
 from core.WidgetManager import WidgetManager
 
@@ -12,6 +13,7 @@ from core.WidgetManager import WidgetManager
 class ControllerMeta(type(QtCore.QObject), type(ABC)):
     required_attrs = ['slot_map']
 
+    # noinspection PyMethodParameters
     def __new__(mcs, name, bases, dct):
         if name == 'BaseController':
             return super().__new__(mcs, name, bases, dct)
@@ -39,7 +41,7 @@ class BaseController(metaclass=ControllerMeta):
     is_auto_connect_signal = True
 
     def __init__(self, parent=None):
-        super().__init__()
+        super().__init__(parent)
         self.widgetManager = WidgetManager(self)
         self.controllerName = self.__class__.__name__
         self.publisher = Publisher()
@@ -56,11 +58,15 @@ class BaseController(metaclass=ControllerMeta):
         searchCls = [self.controllerName, self.controllerName.replace('Controller', ''), self.controllerName.replace('Widget', '')]
         for module in searchModules:
             for cls in searchCls:
-                if importlib.util.find_spec(f'{module}.{cls}Handler') is None:
+                try:
+                    if importlib.util.find_spec(f'{module}.{cls}Handler') is None:
+                        continue
+                    handlerModule = importlib.import_module(f'{module}.{cls}Handler')
+                    self.handler = getattr(handlerModule, f'{cls}Handler')(widgetManager=self.widgetManager, events=list(self.slot_map.keys()))
+                    break
+                except (ModuleNotFoundError, TypeError, ValueError) as e:
+                    logger.warning(f'Exception raised when trying to setup handler: {e}')
                     continue
-                handlerModule = importlib.import_module(f'{module}.{cls}Handler')
-                self.handler = getattr(handlerModule, f'{cls}Handler')(widgetManager=self.widgetManager, events=list(self.slot_map.keys()))
-                break
         if self.is_auto_connect_signal and hasattr(self, 'handler'):
             self._connect_signals()
 
@@ -91,6 +97,7 @@ class BaseController(metaclass=ControllerMeta):
                     pass
                 self.publisher.subscribe(subscriber=subscriber, event=event)
         self.signal_connected = True
+
 
 class BaseCtlHandler(Subscriber):
     def __init__(self, widgetManager: WidgetManager, events: List[str]):

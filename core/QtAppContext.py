@@ -1,7 +1,9 @@
 import os
 import sys
 from PySide6.QtNetwork import QNetworkAccessManager
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Self
+
+from core.Utils import PathHelper
 from core.taskSystem import TaskManagerService
 
 try:
@@ -37,8 +39,15 @@ class QtAppContext(QObject):
                 if cls._instance is None:
                     cls._instance = cls()
         return cls._instance
-
+    @staticmethod
+    def _ensurePyPath():
+        """Setup environment variables and paths"""
+        projectRoot = PathHelper.rootDir()
+        sys.path.append(str(projectRoot))
+        os.environ['QT_AUTO_SCREEN_SCALE_FACTOR'] = '1'
+    
     def __init__(self):
+        self._ensurePyPath()
         super().__init__()
         self._app: Union[QApplication, QCoreApplication] = QApplication.instance() or QApplication(sys.argv)
         self._isBootstrapped = False
@@ -52,10 +61,11 @@ class QtAppContext(QObject):
         self._taskManager = None
         self._app.aboutToQuit.connect(self._onExit)
 
-    def _load_environment(self):
+    def _load_environment(self) -> Self:
         """Load .env file and setup environment variables."""
         if load_dotenv:
             load_dotenv()
+        return self
 
     def _get_env_bool(self, key: str, default: bool = True) -> bool:
         """Helper to parse boolean env vars (PSA_ prefix)."""
@@ -63,7 +73,17 @@ class QtAppContext(QObject):
         if val is None:
             return default
         return val.lower() in ('true', '1', 'yes', 'on')
+    def _setupAppNameIcon(self) -> Self:
+        from core.Utils import AppHelper
+        app_name = AppHelper.getAppName()
+        app_version = AppHelper.getAppVersion()
 
+        self._app.setApplicationName(f'{app_name}')
+        self._app.setApplicationVersion(app_version)
+        self._app.setOrganizationName('Z-Programming')
+        self._app.setOrganizationDomain('zuko.pro')
+        self._app.setWindowIcon(AppHelper.getAppIcon())
+        return self
     def isFeatureEnabled(self, feature_name: str) -> bool:
         """Check if a specific feature is enabled via env vars."""
         keyMap = {'network': 'ENABLE_NETWORK', 'tasks': 'ENABLE_TASKS'}
@@ -71,8 +91,15 @@ class QtAppContext(QObject):
         if not envKey:
             return True
         return self._get_env_bool(envKey, default=True)
-
-    def bootstrap(self):
+    def _setupTheme(self) -> Self:
+        """Setup theme"""
+        import qdarktheme
+        config = self.config()
+        if config.get('ui.high_dpi', True):
+            qdarktheme.enable_hi_dpi()
+        qdarktheme.setup_theme(config.get('ui.theme', 'auto'))
+        return self
+    def bootstrap(self) -> Self:
         """
         Initialize the application context.
         Thread-safe and Idempotent (Runs only once).
@@ -84,6 +111,10 @@ class QtAppContext(QObject):
             logger.info('Bootstrapping Application Context...')
             self.appBooting.emit()
             self._load_environment()
+            from qasync import QEventLoop
+            import asyncio
+            qEvLoop = QEventLoop(self._app)
+            asyncio.set_event_loop(qEvLoop)
             self._config = Config()
             self.registerService('config', self._config)
             self._publisher = Publisher.instance()
@@ -103,13 +134,15 @@ class QtAppContext(QObject):
                 logger.info('Feature [Tasks]: ENABLED')
                 from core.taskSystem.TaskManagerService import TaskManagerService
                 self._taskManager = TaskManagerService(self._publisher, self._config)
-                self.registerService('task_manager', self._taskManager)
+                self.registerService('taskManager', self._taskManager)
             else:
                 logger.warning('Feature [Tasks]: DISABLED (via PSA_ENABLE_TASKS)')
+            self._setupTheme()._setupAppNameIcon()
             self._isBootstrapped = True
             self._publisher.notify('app.ready')
             self.appReady.emit()
             logger.info('Application Context Ready.')
+            return self
 
     def run(self) -> int:
         """Start the Qt Event Loop."""
@@ -125,21 +158,24 @@ class QtAppContext(QObject):
             self._publisher.notify('app.shutdown')
         logger.info('Application shutting down.')
 
-    def registerService(self, name: str, instance: Any) -> None:
+    def registerService(self, name: str, instance: Any) -> Self:
         """Register a global service."""
         self._services.register(name, instance)
+        return self
 
     def getService(self, name: str) -> Any:
         """Get a registered service."""
         return self._services.get(name)
 
-    def registerScopedService(self, tag: str, instance: Any) -> None:
+    def registerScopedService(self, tag: str, instance: Any) -> Self:
         """Register a scoped service (linked to a Job/Task UUID)."""
         self._services.registerScoped(tag, instance)
+        return self
 
     def releaseScope(self, tag: str) -> None:
         """Cleanup all services associated with a tag."""
         self._services.releaseScope(tag)
+        return self
 
     @property
     def config(self) -> Config:
@@ -168,6 +204,7 @@ class QtAppContext(QObject):
     def setState(self, key: str, value: Any) -> None:
         with QMutexLocker(self._stateLock):
             self._sharedState[key] = value
+        return self
 
     def getState(self, key: str, default: Any = None) -> Any:
         with QMutexLocker(self._stateLock):

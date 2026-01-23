@@ -150,7 +150,8 @@ class TaskQueue(QtCore.QObject):
         """
         # Get task from running tasks
         if uuid not in self._runningTasks:
-            logger.warning(f'Task {uuid} not found in running tasks')
+            logger.critical(f'Task {uuid} not found in running tasks')
+            logger.critical('--------------- NEED RECHECK')
             return
         task = self._runningTasks.pop(uuid)
         logger.info(f'Task completed: {uuid} - Status: {finalStatus.name}')
@@ -173,7 +174,8 @@ class TaskQueue(QtCore.QObject):
             try:
                 self._taskTracker.removeTask(uuid)
             except TaskNotFoundException:
-                logger.warning(f'Task {uuid} was not in tracker')
+                logger.critical(f'Task {uuid} was not in tracker')
+                logger.critical('--------------- NEED RECHECK')
         # Save state and process next tasks
         self.saveState()
         self.queueStatusChanged.emit()
@@ -214,7 +216,7 @@ class TaskQueue(QtCore.QObject):
             # Serialize persistent pending tasks
             persistentTasks = [task.serialize() for task in self._pendingTasks if task.isPersistent]
             self._storage.save('pendingTasks', persistentTasks)
-            logger.debug(f'Saved {len(persistentTasks)} persistent pending tasks')
+            logger.debug(f'Saved {len(persistentTasks)} pending tasks')
         except Exception as e:
             logger.error(f'Error saving TaskQueue state: {e}')
 

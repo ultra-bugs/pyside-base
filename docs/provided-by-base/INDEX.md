@@ -5,80 +5,35 @@ This document provides a comprehensive index of all core components available in
 ## Quick Reference
 
 ### Core Components (`core/`)
-| Component                                                        | Description                       | Key Features                                         |
-|------------------------------------------------------------------|-----------------------------------|------------------------------------------------------|
-| [BaseController](core/BaseController.md)                         | Base controller for UI components | Observer pattern, widget management, signal handling |
-| [Config](core/Config.md)                                         | Configuration management          | JSON persistence, thread-safe access, dot notation   |
-| [Exceptions](core/Exceptions.md)                                 | Exception handling system         | Custom exceptions, error dialogs, event system       |
-| [Observer](core/Observer.md)                                     | Observer pattern implementation   | Event publishing, subscriptions, thread-safe         |
-| [TaskSystem](core/TaskSystem.md)                                 | Task management system            | Task execution, steps, monitoring, signals           |
-| [Utils](core/Utils.md)                                           | Utility classes and functions     | Path handling, URL manipulation, Python utilities    |
-| [WidgetManager](core/WidgetManager.md)                           | Widget management system          | Dot notation access, type-safe retrieval             |
-| [Logging](core/Logging.md)                                       | Logging system                    | Centralized logging, multiple levels, file output    |
-| [CURL SSL Anti Fingerprinting](core/CurlSslAntiDetectSession.md) | Extends/Patching                  | Prevent SSL fingerprinting for `requests` library    |
+| Component | Description | Key Features |
+|-----------|-------------|--------------|
+| [BaseController](../../core/BaseController.md) | Base controller for UI components | Observer pattern, widget management, signal handling |
+| [Config](../../core/Config.md) | Configuration management | JSON persistence, thread-safe access, dot notation |
+| [Exceptions](../../core/Exceptions.md) | Exception handling system | Custom exceptions, error dialogs, event system |
+| [Observer](../../core/Observer.md) | Observer pattern implementation | Event publishing, subscriptions, thread-safe |
+| [TaskSystem](../../core/TaskSystem.md) | Task management system | Task execution, steps, monitoring, signals |
+| [Utils](../../core/Utils.md) | Utility classes and functions | Path handling, URL manipulation, Python utilities |
+| [WidgetManager](../../core/WidgetManager.md) | Widget management system | Dot notation access, type-safe retrieval |
+| [Logging](../../core/Logging.md) | Logging system | Centralized logging, multiple levels, file output |
+| [CURL SSL Anti Fingerprinting](../../core/CurlSslAntiDetectSession.md) | Extends/Patching | Prevent SSL fingerprinting for `requests` library |
 
 ### Helper Components (`helpers/`)
 | Component | Description | Key Features |
 |-----------|-------------|--------------|
-| [AppHelper](helpers/AppHelper.md) | Application utilities | App info, configuration access, icon management |
-| [ValidateHelper](helpers/ValidateHelper.md) | Input validation | Hostname, email, URL validation, error handling |
-| [TextLinesHelpers](helpers/TextLinesHelpers.md) | Text processing | Line manipulation, text analysis, formatting |
-| [StealthBrowserHelper](helpers/StealthBrowserHelper.md) | Browser stealth utilities | Anti-detection, stealth features, browser automation |
-
-### Service Components (`services/`)
-| Component                                                          | Description               | Key Features                                           |
-|--------------------------------------------------------------------|---------------------------|--------------------------------------------------------|
-| [AbstractCheckerService](services/AbstractCheckerService.md)       | Base checker service      | Browser automation, profile management, error handling |
-| [InstancesContainerService](services/InstancesContainerService.md) | Instance management       | Thread-safe container, UUID-based identification       |
-| [TaskSchedulerService](services/TaskSchedulerService.md)           | Task scheduling           | One-time and recurring tasks, time-based execution     |
-| [ChromeBrowserServices](services/ChromeBrowserServices.md)         | Chrome browser management | Browser automation, profile handling, stealth features |
-| [ChromeProfileServices](services/ChromeProfileServices.md)         | Profile management        | Profile creation, management, import/export            |
-| [DomWatcherService](services/DomWatcherService.md)                 | DOM monitoring            | Element watching, change detection, event handling     |
-| [NetworkWatcherService](services/NetworkWatcherService.md)         | Network monitoring        | Request/response tracking, network analysis            |
+| [AppHelper](../../helpers/AppHelper.md) | Application utilities | App info, configuration access, icon management |
+| [ValidateHelper](../../helpers/ValidateHelper.md) | Input validation | Hostname, email, URL validation, error handling |
+| [TextLinesHelpers](../../helpers/TextLinesHelpers.md) | Text processing | Line manipulation, text analysis, formatting |
+| [StealthBrowserHelper](../../helpers/StealthBrowserHelper.md) | Browser stealth utilities | Anti-detection, stealth features, browser automation |
 
 ## Component Relationships
 
+Refer to specific component documentation for detailed usage patterns and relationships.
+
 ### Core Architecture
-```
-BaseController
-├── WidgetManager (widget access)
-├── Observer (event system)
-└── Config (configuration)
+- **BaseController** relies on **WidgetManager**, **Observer**, and **Config**.
+- **TaskSystem** orchestrates **Task** and **TaskStep** execution.
 
-TaskSystem
-├── TaskManager (task execution)
-├── Task (individual tasks)
-└── TaskStep (task steps)
-
-Utils
-├── PathHelper (file operations)
-├── UrlHelper (URL manipulation)
-├── PythonHelper (Python utilities)
-└── WidgetUtils (widget operations)
-```
-
-### Service Layer
-```
-AbstractCheckerService
-├── ChromeBrowserServices (browser automation)
-├── ChromeProfileServices (profile management)
-└── InstancesContainerService (instance management)
-
-TaskSchedulerService
-├── TaskSystem (task execution)
-└── InstancesContainerService (instance management)
-```
-
-### Helper Layer
-```
-AppHelper
-├── Config (configuration access)
-└── PathHelper (path utilities)
-
-ValidateHelper
-├── AppException (error handling)
-└── InputError (validation errors)
-```
+See component docs for more diagrams.
 
 ## Common Usage Patterns
 
@@ -88,58 +43,36 @@ from core import BaseController, Config, logger
 
 class MyController(BaseController):
     slot_map = {
-        'button_clicked': 'on_button_clicked'
+        'buttonClicked': ['pushSampleButton', 'clicked']
+        #event name: [widget property name, signal name]
+        'forced_camel_case': ['pushSampleButton', 'clicked']
     }
     
     def __init__(self, parent=None):
         super().__init__(parent)
         self.config = Config()
-        self.connect_signals()
-    
-    def on_button_clicked(self):
-        logger.info("Button clicked")
-        # Handle button click
-```
-
-### 2. Service Implementation
+        
+### 2. Handler Implement
 ```python
-from services import AbstractCheckerService
-from core import logger
+from core.Observer import Observer
+from core.WidgetManager import WidgetManager
+from typing import List
 
-class MyCheckerService(AbstractCheckerService):
-    def __init__(self):
-        super().__init__()
-        self.BASE_URL = 'https://example.com'
+class MyHandler(Observer):
+    def __init__(self, widgetManager: WidgetManager, events: List[str]):
+        super().__init__(events=events)
+        self.widgetManager = widgetManager
     
-    def check_account(self, account_data):
-        try:
-            result = self.initializeBrowser()
-            if result['status'] == 'success':
-                # Perform check
-                return {'status': 'success'}
-        except Exception as e:
-            logger.error(f"Check failed: {e}")
-            return {'status': 'error', 'message': str(e)}
-```
-
-### 3. Task Implementation
-```python
-from core import TaskManager, Task, PrintStep, SleepStep
-
-def create_my_task():
-    manager = TaskManager()
-    task = manager.create_task("my_task", "My Task")
-    
-    task.add_step(PrintStep("Starting task"))
-    task.add_step(SleepStep(2.0))
-    task.add_step(PrintStep("Task completed"))
-    
-    return manager, task
-```
+    # camelCase of event name. Prefixed with `on`
+    def onButtonClickedButtonClicked(self):
+        pass
+    # forced_camel_case
+    # Even you already snaked evt name. You still must define evt handler = onForcedCamelCase
+    def onForcedCamelCase(self):
+        pass
+``` 
 
 ### 4. Configuration Usage
-
-```python
 from core import Config
 from core.helpers import AppHelper
 

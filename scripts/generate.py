@@ -3,7 +3,7 @@ import os
 
 TEMPLATES = {
     'controller': "from core import BaseController\n\nclass {name}Controller(BaseController):\n    def __init__(self):\n        self.slot_map = {{\n            # Add your slot mappings here\n            # 'event_name': ['widget_name', 'signal_name']\n        }}\n        super().__init__()\n        \n    def setupUi(self):\n        # Setup your UI components here\n        pass\n",
-    'handler': 'from core import Subscriber\n\nclass {name}Handler(Subscriber):\n    def __init__(self, widget_manager, events):\n        self.widget_manager = widget_manager\n        self.controller = widget_manager.controller\n        super().__init__(events)\n    # Add your event handlers here\n    # def on_event_name(self, data=None):\n    #     pass\n',
+    'handler': 'from core import Subscriber\n\nclass {name}Handler(Subscriber):\n    def __init__(self, widgetManager, events):\n        self.widgetManager = widgetManager\n        self.controller = widgetManager.controller\n        super().__init__(events)\n    # Add your event handlers here\n    # def on_event_name(self, data=None):\n    #     pass\n',
     'service': 'class {name}Service:\n    def __init__(self):\n        pass\n    \n    # Add your service methods here\n',
     'component': 'from core import BaseComponent\n\nclass {name}Component(BaseComponent):\n    def __init__(self):\n        super().__init__()\n        \n    def setupUi(self):\n        # Setup your component UI here\n        pass\n',
     'task': 'from core import Task, TaskStep, PrintStep\n\nclass {name}Task(Task):\n    """\n    {description}\n    """\n    def __init__(self, name="{name}", description="{description}"):\n        super().__init__(name, description)\n        \n        # Initialize task steps\n        self._setup_steps()\n        \n    def _setup_steps(self):\n        """Set up the task steps"""\n        # Example step\n        self.add_step(PrintStep("Starting {name} task"))\n        \n        # TODO: Add your task steps here\n        \n        # Final step\n        self.add_step(PrintStep("{name} task completed"))\n',
@@ -63,11 +63,11 @@ def generateTaskStep(name, description, base_path):
 
 def main():
     parser = argparse.ArgumentParser(description='Generate Qt app components')
-    parser.addArgument('type', choices=['controller', 'service', 'component', 'task', 'task_step'], help='Type of component to generate')
-    parser.addArgument('name', help='Name of the component')
-    parser.addArgument('--description', '-d', help='Description (used for tasks and task steps)', default='Custom implementation')
+    parser.add_argument('type', choices=['controller', 'service', 'component', 'task', 'task_step'], help='Type of component to generate')
+    parser.add_argument('name', help='Name of the component')
+    parser.add_argument('--description', '-d', help='Description (used for tasks and task steps)', default='Custom implementation')
     args = parser.parse_args()
-    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),'app')
     if args.type == 'controller':
         generateController(args.name, base_path)
     elif args.type == 'service':

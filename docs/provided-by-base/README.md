@@ -1,45 +1,22 @@
-# Core Components Documentation
+# Documentation Provided by Base
 
-This directory contains comprehensive documentation for the core components provided by the base framework in `core`, `helpers`, and `services` directories.
+This directory contains documentation specific to the core framework features available to you.
 
-## Documentation Structure
+## 📚 Useful Documentation
 
-### Core Components (`core/`)
-- [BaseController](core/BaseController.md) - Base controller class for UI components
-- [Config](core/Config.md) - Configuration management system
-- [Exceptions](core/Exceptions.md) - Exception handling and custom exceptions
-- [Observer](core/Observer.md) - Observer pattern implementation
-- [TaskSystem](core/TaskSystem.md) - Task management and execution system
-- [Utils](core/Utils.md) - Utility classes and helper functions
-- [WidgetManager](core/WidgetManager.md) - Widget management for UI components
-- [Logging](core/Logging.md) - Logging system
-- [Decorators](core/Decorators.md) - Common decorators
-- [Constants](core/Constants.md) - Application constants
+- **[Component Index](INDEX.md)**: The central list of all available core components, helpers, and services. **Start here.**
+- **[Testing Setup](TESTING_SETUP.md)**: Quick guide on how to set up and run tests for both your app and the core.
+- **[CLI Tools](CLI.md)**: Documentation for scaffolding and generation scripts.
+- **[Components](COMPONENTS.md)**: Overview of UI components.
 
-### Helper Components (`helpers/`)
-- [AppHelper](helpers/AppHelper.md) - Application helper utilities
-- [ValidateHelper](helpers/ValidateHelper.md) - Input validation helpers
-- [TextLinesHelpers](helpers/TextLinesHelpers.md) - Text processing utilities
-- [StealthBrowserHelper](helpers/StealthBrowserHelper.md) - Browser stealth utilities
+## 🔗 Quick Links to Key Core Docs
 
-### Service Components (`services/`)
-- [AbstractCheckerService](services/AbstractCheckerService.md) - Base checker service
-- [InstancesContainerService](services/InstancesContainerService.md) - Instance management
-- [TaskSchedulerService](services/TaskSchedulerService.md) - Task scheduling service
-- [ChromeBrowserServices](services/ChromeBrowserServices.md) - Chrome browser management
-- [ChromeProfileServices](services/ChromeProfileServices.md) - Chrome profile management
-- [DomWatcherService](services/DomWatcherService.md) - DOM monitoring service
-- [NetworkWatcherService](services/NetworkWatcherService.md) - Network monitoring service
+While the Index has everything, here are the most commonly used components:
 
-## Quick Start
+- [BaseController](../../core/BaseController.md)
+- [TaskSystem](../../core/TaskSystem.md)
+- [Config](../../core/Config.md)
+- [Logging](../../core/Logging.md)
 
-Each component documentation includes:
-- **Overview**: What the component does
-- **API Reference**: Complete method and property documentation
-- **Usage Examples**: Practical code examples
-- **Best Practices**: Recommended usage patterns
-- **Dependencies**: Required imports and dependencies
-
-## Getting Help
-
-For questions about specific components, refer to the individual documentation files. Each file contains detailed examples and API references.
+---
+*Generated for Base Framework 2026 Standard*
