@@ -19,7 +19,6 @@ Monitors task status, progress, and logs failures for analysis.
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
 
-#
 import threading
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional

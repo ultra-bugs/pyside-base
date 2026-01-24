@@ -19,7 +19,6 @@ Provides common functionality, lifecycle management, and Qt signals integration.
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
 
-#
 import abc
 import threading
 import uuid
