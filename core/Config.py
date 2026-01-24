@@ -17,12 +17,12 @@ class Config:
             cls._instance._setup()
             cls._instance.load()
         return cls._instance
-    
+
     @classmethod
     def getInstance(cls):
         cls()
         return cls._instance
-    
+
     def __init__(self):
         self.isLoaded = False
 

@@ -39,13 +39,14 @@ class QtAppContext(QObject):
                 if cls._instance is None:
                     cls._instance = cls()
         return cls._instance
+
     @staticmethod
     def _ensurePyPath():
         """Setup environment variables and paths"""
         projectRoot = PathHelper.rootDir()
         sys.path.append(str(projectRoot))
         os.environ['QT_AUTO_SCREEN_SCALE_FACTOR'] = '1'
-    
+
     def __init__(self):
         self._ensurePyPath()
         super().__init__()
@@ -73,17 +74,18 @@ class QtAppContext(QObject):
         if val is None:
             return default
         return val.lower() in ('true', '1', 'yes', 'on')
+
     def _setupAppNameIcon(self) -> Self:
         from core.Utils import AppHelper
         app_name = AppHelper.getAppName()
         app_version = AppHelper.getAppVersion()
-
         self._app.setApplicationName(f'{app_name}')
         self._app.setApplicationVersion(app_version)
         self._app.setOrganizationName('Z-Programming')
         self._app.setOrganizationDomain('zuko.pro')
         self._app.setWindowIcon(AppHelper.getAppIcon())
         return self
+
     def isFeatureEnabled(self, feature_name: str) -> bool:
         """Check if a specific feature is enabled via env vars."""
         keyMap = {'network': 'ENABLE_NETWORK', 'tasks': 'ENABLE_TASKS'}
@@ -91,6 +93,7 @@ class QtAppContext(QObject):
         if not envKey:
             return True
         return self._get_env_bool(envKey, default=True)
+
     def _setupTheme(self) -> Self:
         """Setup theme"""
         import qdarktheme
@@ -99,6 +102,7 @@ class QtAppContext(QObject):
             qdarktheme.enable_hi_dpi()
         qdarktheme.setup_theme(config.get('ui.theme', 'auto'))
         return self
+
     def bootstrap(self) -> Self:
         """
         Initialize the application context.

@@ -18,8 +18,6 @@ Submits tasks to QThreadPool and handles task completion/retry.
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-
-#
 from collections import deque
 from typing import Any, Optional
 

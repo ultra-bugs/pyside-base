@@ -66,7 +66,6 @@ from contextlib import contextmanager
 def logContext(**kwargs):
     """
     Temporary logging context.
-
     Usage:
         with logContext(taskId=uuid, userId=123):
             logger.info('Processing')  # Includes taskId and userId

@@ -11,11 +11,12 @@
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-from typing import Any, Dict, List, Optional,Type , TypeVar
+from typing import Any, Dict, List, Optional, Type, TypeVar
 from PySide6.QtCore import QMutex, QMutexLocker, QObject
 from core.Logging import logger
 
 T = TypeVar('T')
+
 
 class ServiceLocator(QObject):
     """

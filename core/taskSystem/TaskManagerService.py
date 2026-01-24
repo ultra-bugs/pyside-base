@@ -18,7 +18,6 @@ Provides the primary API for other parts of the application to interact with tas
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-
 from typing import Any, Dict, List, Optional
 from PySide6 import QtCore
 from .ChainRetryBehavior import ChainRetryBehavior
@@ -170,13 +169,12 @@ class TaskManagerService(QtCore.QObject):
         if not includeChainedChildren:
             chainedUuids = self._taskTracker.getUuidsByTag('_ChainedChild')
             targetUuids = targetUuids - chainedUuids
-
         logger.info(f"Bulk stopping tasks with tag '{tag}': {len(targetUuids)} tasks targeted.")
         for uuid in targetUuids:
             try:
                 self.cancelTask(uuid)
             except Exception as e:
-                logger.warning(f"Failed to stop task {uuid} during bulk operation: {e}")
+                logger.warning(f'Failed to stop task {uuid} during bulk operation: {e}')
 
     def pauseTasksByTag(self, tag: str, includeChainedChildren: bool = False) -> None:
         """
@@ -189,13 +187,12 @@ class TaskManagerService(QtCore.QObject):
         if not includeChainedChildren:
             chainedUuids = self._taskTracker.getUuidsByTag('_ChainedChild')
             targetUuids = targetUuids - chainedUuids
-
         logger.info(f"Bulk pausing tasks with tag '{tag}': {len(targetUuids)} tasks targeted.")
         for uuid in targetUuids:
             try:
                 self.pauseTask(uuid)
             except Exception as e:
-                logger.warning(f"Failed to pause task {uuid} during bulk operation: {e}")
+                logger.warning(f'Failed to pause task {uuid} during bulk operation: {e}')
 
     def cancelTask(self, uuid: str) -> None:
         """

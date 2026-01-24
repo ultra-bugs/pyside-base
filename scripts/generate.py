@@ -67,7 +67,7 @@ def main():
     parser.add_argument('name', help='Name of the component')
     parser.add_argument('--description', '-d', help='Description (used for tasks and task steps)', default='Custom implementation')
     args = parser.parse_args()
-    base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),'app')
+    base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app')
     if args.type == 'controller':
         generateController(args.name, base_path)
     elif args.type == 'service':

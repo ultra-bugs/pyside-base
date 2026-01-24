@@ -18,7 +18,6 @@ Provides common functionality, lifecycle management, and Qt signals integration.
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-
 import abc
 import threading
 import uuid
@@ -124,11 +123,9 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         self.currentRetryAttempts = 0
         self.failSilently = failSilently
         self._stopEvent = threading.Event()
-        
         # Tags Management
         self.tags = tags if tags is not None else set()
         self.tags.add(self.__class__.__name__)
-        
         logger.debug(f'Task created: {self.uuid} - {self.name}' + (f' (chain: {chainUuid})' if chainUuid else ''))
 
     serializables: Optional[Any] = None

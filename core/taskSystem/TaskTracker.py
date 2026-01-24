@@ -18,7 +18,6 @@ Monitors task status, progress, and logs failures for analysis.
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-
 import threading
 from datetime import datetime
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
@@ -75,7 +74,6 @@ class TaskTracker(QtCore.QObject):
             self._connectTaskSignals(task)
             # Index tags
             self._indexTask(task)
-
             # Handle Chain Children
             if isChain:
                 for child in task._tasks:
@@ -97,7 +95,6 @@ class TaskTracker(QtCore.QObject):
             # Retrieve and remove the main task
             task = self._activeTasks.pop(uuid)
             self._unindexTask(task)
-
             # Cleanup if it is a Chain
             if self._isTaskChain(task):
                 for child in task._tasks:
