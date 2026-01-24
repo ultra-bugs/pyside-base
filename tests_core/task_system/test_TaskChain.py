@@ -18,17 +18,18 @@ serialization, cancellation, and recovery scenarios.
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
 
-#
-import pytest
 import time
 from unittest.mock import MagicMock, patch
 
+#
+import pytest
+
+from core.Observer import Publisher
 from core.taskSystem.AbstractTask import AbstractTask
-from core.taskSystem.TaskChain import TaskChain
 from core.taskSystem.ChainContext import ChainContext
 from core.taskSystem.ChainRetryBehavior import ChainRetryBehavior
+from core.taskSystem.TaskChain import TaskChain
 from core.taskSystem.TaskStatus import TaskStatus
-from core.Observer import Publisher
 
 
 class MockTask(AbstractTask):

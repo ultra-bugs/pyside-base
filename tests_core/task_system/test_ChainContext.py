@@ -19,6 +19,7 @@ Tests for ChainContext class.
 #
 import json
 import threading
+
 import pytest
 
 from core.taskSystem.ChainContext import ChainContext

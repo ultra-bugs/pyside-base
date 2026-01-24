@@ -14,13 +14,15 @@
 
 import datetime
 from pathlib import Path
-from PySide6.QtCore import QTimer, Qt
+
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QMainWindow, QProgressBar, QTableWidgetItem
+
+from app.windows.main.main_window import Ui_MainWindow
 from core import BaseController, Config, logger
 from core.QtAppContext import QtAppContext
 from core.taskSystem.TaskStatus import TaskStatus
-from app.windows.main.main_window import Ui_MainWindow
 
 
 class MainController(Ui_MainWindow, BaseController, QMainWindow):

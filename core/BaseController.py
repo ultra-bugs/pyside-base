@@ -15,12 +15,12 @@
 import importlib
 from abc import ABC, abstractmethod
 from typing import Dict, List
-from PySide6 import QtCore
+
 from box import Box
+from PySide6 import QtCore
 
 from core.Logging import logger
-from core.Observer import Subscriber
-from core.Observer import Publisher
+from core.Observer import Publisher, Subscriber
 from core.WidgetManager import WidgetManager
 
 

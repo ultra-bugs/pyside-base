@@ -14,7 +14,9 @@
 
 import json
 from typing import Any, Dict, List
+
 from PySide6.QtCore import QMutex, QMutexLocker
+
 from core.Exceptions import ConfigError
 from core.Utils import PathHelper
 

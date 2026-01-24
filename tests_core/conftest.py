@@ -21,11 +21,12 @@ This file provides:
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
 
-#
-import pytest
-from unittest.mock import MagicMock, patch
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+#
+import pytest
 
 # Ensure project root is in sys.path
 project_root = Path(__file__).parent
@@ -290,6 +291,7 @@ def caplog_loguru(caplog):
     Fixture to propagate loguru logs to the standard logging module so caplog can capture them.
     """
     import logging
+
     from loguru import logger
     class PropagateHandler(logging.Handler):
         def emit(self, record):

@@ -16,10 +16,11 @@ Tests for AbstractTask base class.
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
 
+import pytest
+
 #
 from core.taskSystem.AbstractTask import AbstractTask
 from core.taskSystem.TaskStatus import TaskStatus
-import pytest
 
 
 class ConcreteTask(AbstractTask):

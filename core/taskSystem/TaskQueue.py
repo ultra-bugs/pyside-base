@@ -25,12 +25,12 @@ from typing import Any, Optional
 
 from PySide6 import QtCore
 
-from .Exceptions import TaskNotFoundException
-from .TaskStatus import TaskStatus
-from .TaskTracker import TaskTracker
-from .storage.BaseStorage import BaseStorage
 from ..Config import Config
 from ..Logging import logger
+from .Exceptions import TaskNotFoundException
+from .storage.BaseStorage import BaseStorage
+from .TaskStatus import TaskStatus
+from .TaskTracker import TaskTracker
 
 # Initialize logger for TaskSystem
 logger = logger.bind(component='TaskSystem')

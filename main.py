@@ -15,11 +15,14 @@
 import os
 import sys
 from pathlib import Path
+
 import qdarktheme
 from PySide6.QtCore import Qt
+
+from app.windows.main.MainController import MainController
 from core import Config, ExceptionHandler, logger
 from core.QtAppContext import QtAppContext
-from app.windows.main.MainController import MainController
+
 
 def configInit():
     """Load configuration"""

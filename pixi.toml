@@ -27,6 +27,9 @@ qasync = ">=0.28.0, <0.29"
 [feature.dev.pypi-dependencies]
 ruff = "*"
 
+[feature.dev.dependencies]
+isort = ">=7.0.0,<8"
+
 [feature.tests.pypi-dependencies]
 ruff = "*"
 pytest = ">=9.0.2, <10"
@@ -57,12 +60,13 @@ lint = "ruff check ."
 lint-fix = "ruff check . --fix"
 format = "ruff format ."
 format-check = "ruff format --check ."
+sort = "isort --git-ignore ."
+sort-check = "isort . -c --git-ignore"
 type-check = "mypy ."
-check = { depends-on = ["lint", "type-check", "test"] }
+check = { depends-on = ["lint", "type-check", "sort-check"] }
 
 # Utilities
 check-pixi = "python -c \"import sys,platform; print('Pixi OK'); print('Python:', sys.version); print('Platform:', platform.platform())\""
 clean-logs = "python -c \"import shutil, os; p='data\\\\logs'; shutil.rmtree(p, ignore_errors=True); os.makedirs(p, exist_ok=True); print('Cleaned logs in', p)\""
-
 [target.win-64.pypi-dependencies]
 pywin32 = ">=311, <312"

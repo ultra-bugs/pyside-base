@@ -19,13 +19,14 @@ Application task package.
 Contains AbstractTask subclasses used by UI handlers/controllers.
 """
 
-from .SimpleDemoTask import SimpleDemoTask
-from .ConditionDemoTask import ConditionDemoTask
-from .LoopDemoTask import LoopDemoTask
-from .SleepDemoTask import SleepDemoTask
-from .CpuIntensiveDemoTask import CpuIntensiveDemoTask
 from .AdbCommandTask import AdbCommandTask
-from .ChainDemoTask import ChainDemoTask, DataGeneratorTask, DataProcessorTask, FlakyTask
+from .ChainDemoTask import (ChainDemoTask, DataGeneratorTask,
+                            DataProcessorTask, FlakyTask)
+from .ConditionDemoTask import ConditionDemoTask
+from .CpuIntensiveDemoTask import CpuIntensiveDemoTask
+from .LoopDemoTask import LoopDemoTask
+from .SimpleDemoTask import SimpleDemoTask
+from .SleepDemoTask import SleepDemoTask
 
 __all__ = [
     'SimpleDemoTask',

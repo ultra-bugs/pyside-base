@@ -16,6 +16,8 @@ Tests for TaskTracker.
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
 
+import logging
+
 #
 import pytest
 
@@ -23,7 +25,6 @@ from core.taskSystem.Exceptions import TaskNotFoundException
 from core.taskSystem.TaskStatus import TaskStatus
 from core.taskSystem.TaskTracker import TaskTracker
 from tests_core.task_system.test_AbstractTask import ConcreteTask
-import logging
 
 
 def test_task_tracker_initialization(mock_config):

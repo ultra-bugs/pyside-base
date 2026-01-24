@@ -14,24 +14,27 @@
 
 import os
 import sys
-from PySide6.QtNetwork import QNetworkAccessManager
-from typing import Any, Optional, Union, Self
+from typing import Any, Optional, Self, Union
 
-from core.Utils import PathHelper
+from PySide6.QtNetwork import QNetworkAccessManager
+
 from core.taskSystem import TaskManagerService
+from core.Utils import PathHelper
 
 try:
     from dotenv import load_dotenv
 except ImportError:
     load_dotenv = None
-from PySide6.QtCore import QCoreApplication, QMutex, QMutexLocker, QObject, Signal, Slot
+from PySide6.QtCore import (QCoreApplication, QMutex, QMutexLocker, QObject,
+                            Signal, Slot)
 from PySide6.QtWidgets import QApplication
+
 from core.Config import Config
+from core.Exceptions import ExceptionHandler
 from core.Logging import logger
 from core.NetworkManager import NetworkManager
 from core.Observer import Publisher
 from core.ServiceLocator import ServiceLocator
-from core.Exceptions import ExceptionHandler
 
 
 class QtAppContext(QObject):
@@ -129,8 +132,9 @@ class QtAppContext(QObject):
             logger.info('Bootstrapping Application Context...')
             self.appBooting.emit()
             self._load_environment()
-            from qasync import QEventLoop
             import asyncio
+
+            from qasync import QEventLoop
             qEvLoop = QEventLoop(self._app)
             asyncio.set_event_loop(qEvLoop)
             self._config = Config()
@@ -150,7 +154,8 @@ class QtAppContext(QObject):
                 logger.warning('Feature [Network]: DISABLED (via PSA_ENABLE_NETWORK)')
             if self.isFeatureEnabled('tasks'):
                 logger.info('Feature [Tasks]: ENABLED')
-                from core.taskSystem.TaskManagerService import TaskManagerService
+                from core.taskSystem.TaskManagerService import \
+                    TaskManagerService
                 self._taskManager = TaskManagerService(self._publisher, self._config)
                 self.registerService('taskManager', self._taskManager)
             else:

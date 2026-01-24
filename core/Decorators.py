@@ -14,8 +14,9 @@
 
 import traceback
 import typing
-from functools import wraps
 from dataclasses import fields, is_dataclass
+from functools import wraps
+
 from PySide6 import QtCore, QtWidgets
 
 

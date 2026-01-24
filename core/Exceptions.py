@@ -13,6 +13,7 @@
 #                  * * * * * * * * * * * * * * * * * * * * *
 
 from typing import Type
+
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QApplication

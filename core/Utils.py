@@ -25,13 +25,14 @@ from dataclasses import asdict, dataclass, is_dataclass
 from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 from uuid import UUID
+
 import curl_cffi
 import numpy as np
 import win32process
-from PySide6.QtCore import QCoreApplication, QTimer, Qt
+from box import Box
+from PySide6.QtCore import QCoreApplication, Qt, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QMessageBox
-from box import Box
 
 T = TypeVar('T')
 

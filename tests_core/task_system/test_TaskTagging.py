@@ -16,12 +16,14 @@ Tests for Bulk Action on Task Management.
 #                  * * * * * * * * * * * * * * * * * * * * *
 
 #
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
 import pytest
+
+from core.taskSystem.AbstractTask import AbstractTask
+from core.taskSystem.TaskChain import TaskChain
 from core.taskSystem.TaskManagerService import TaskManagerService
 from core.taskSystem.TaskTracker import TaskTracker
-from core.taskSystem.TaskChain import TaskChain
-from core.taskSystem.AbstractTask import AbstractTask
 from tests_core.task_system.test_AbstractTask import ConcreteTask
 
 

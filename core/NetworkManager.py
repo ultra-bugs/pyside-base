@@ -12,8 +12,9 @@
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
 
-from PySide6.QtNetwork import QNetworkAccessManager, QNetworkDiskCache
 from PySide6.QtCore import QObject, QStandardPaths
+from PySide6.QtNetwork import QNetworkAccessManager, QNetworkDiskCache
+
 from core.Config import Config
 from core.Utils import PathHelper
 

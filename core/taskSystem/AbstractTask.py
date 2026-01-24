@@ -24,11 +24,13 @@ import abc
 import threading
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional
+
 from PySide6 import QtCore
+
+from ..Logging import logger
 from .Exceptions import TaskCancellationException
 from .TaskStatus import TaskStatus
-from ..Logging import logger
 
 if TYPE_CHECKING:
     from .ChainContext import ChainContext

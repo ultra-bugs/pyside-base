@@ -90,8 +90,8 @@ def main():
     print('Pipeline finished successfully.')
 
 
-import os
 import fnmatch
+import os
 
 # ================= CONFIGURATION =================
 TRIGGER_LINE = '#              * * * * * * * * * * * * * * * * * * * * *'

@@ -15,6 +15,7 @@
 import collections.abc
 from collections import defaultdict
 from copy import deepcopy
+
 from PySide6.QtCore import QAbstractItemModel
 
 

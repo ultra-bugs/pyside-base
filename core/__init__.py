@@ -14,7 +14,8 @@
 
 from core.BaseController import BaseController
 from core.Config import Config
-from core.Exceptions import AppException, ConfigError, ExceptionHandler, ServiceError, UIError
+from core.Exceptions import (AppException, ConfigError, ExceptionHandler,
+                             ServiceError, UIError)
 from core.Logging import setupLogging
 from core.Observer import Publisher, Subscriber
 from core.QtAppContext import QtAppContext

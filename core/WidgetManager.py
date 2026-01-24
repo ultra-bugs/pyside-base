@@ -13,8 +13,11 @@
 #                  * * * * * * * * * * * * * * * * * * * * *
 
 from typing import Callable, Union
+
 from PySide6.QtCore import QCoreApplication, QObject
-from PySide6.QtWidgets import QApplication, QCheckBox, QDoubleSpinBox, QLabel, QLineEdit, QRadioButton, QSpinBox, QTableView, QTableWidget, QTextEdit, QWidget
+from PySide6.QtWidgets import (QApplication, QCheckBox, QDoubleSpinBox, QLabel,
+                               QLineEdit, QRadioButton, QSpinBox, QTableView,
+                               QTableWidget, QTextEdit, QWidget)
 
 
 class WidgetManager:
