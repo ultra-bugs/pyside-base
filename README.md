@@ -1,4 +1,10 @@
-# UltraBugz pyside_base — Ship Desktop Apps Faster
+<a href="http://zuko.pro/">
+    <img src="https://avatars0.githubusercontent.com/u/6666271?v=3&s=96" alt="Z-Logo"
+         title="Halu Universe" align="right" />
+</a>
+# Ship Desktop Apps Faster
+
+# ☄️ UltraBug [z] PysideBase ☄️
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org/)
 [![Qt](https://img.shields.io/badge/Qt-PySide6-green)](https://doc.qt.io/qtforpython/)
