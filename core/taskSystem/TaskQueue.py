@@ -15,9 +15,11 @@ Submits tasks to QThreadPool and handles task completion/retry.
 #
 #              * * * * * * * * * * * * * * * * * * * * *
 #              * -    - -   F.R.E.E.M.I.N.D   - -    - *
-#              * -  Copyright © 2025 (Z) Programing  - *
+#              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
+
+#
 from collections import deque
 from typing import Any, Optional
 
@@ -216,7 +218,7 @@ class TaskQueue(QtCore.QObject):
             # Serialize persistent pending tasks
             persistentTasks = [task.serialize() for task in self._pendingTasks if task.isPersistent]
             self._storage.save('pendingTasks', persistentTasks)
-            logger.debug(f'Saved {len(persistentTasks)} pending tasks')
+            logger.debug(f'Saved {len(persistentTasks)} persistent pending tasks')
         except Exception as e:
             logger.error(f'Error saving TaskQueue state: {e}')
 

@@ -5,6 +5,20 @@ Meta-task that executes multiple tasks sequentially with shared context.
 Supports retry behaviors, progress tracking, and persistence.
 """
 
+#              M""""""""`M            dP
+#              Mmmmmm   .M            88
+#              MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
+#              MMP  .MMMMM  88    88  88888"    88'  `88
+#              M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
+#              M         M  `88888P'  dP   `YP  `88888P'
+#              MMMMMMMMMMM    -*-  Created by Zuko  -*-
+#
+#              * * * * * * * * * * * * * * * * * * * * *
+#              * -    - -   F.R.E.E.M.I.N.D   - -    - *
+#              * -  Copyright © 2026 (Z) Programing  - *
+#              *    -  -  All Rights Reserved  -  -    *
+#              * * * * * * * * * * * * * * * * * * * * *
+
 import importlib
 import time
 from typing import Any, Dict, List, Optional
@@ -53,6 +67,8 @@ class TaskChain(AbstractTask, Subscriber):
         Subscriber.__init__(self, events=['ChainProgressUpdateRequest'])
         for task in tasks:
             task.chainUuid = self.uuid
+            task.addTag('_ChainedChild')
+            task.addTag(f'Parent_{self.uuid}')
         self._tasks = tasks
         self._currentTaskIndex = 0
         self._chainContext = ChainContext(self.uuid)

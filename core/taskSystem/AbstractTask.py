@@ -5,6 +5,20 @@ Base class for all tasks in the TaskSystem.
 Provides common functionality, lifecycle management, and Qt signals integration.
 """
 
+#              M""""""""`M            dP
+#              Mmmmmm   .M            88
+#              MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
+#              MMP  .MMMMM  88    88  88888"    88'  `88
+#              M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
+#              M         M  `88888P'  dP   `YP  `88888P'
+#              MMMMMMMMMMM    -*-  Created by Zuko  -*-
+#
+#              * * * * * * * * * * * * * * * * * * * * *
+#              * -    - -   F.R.E.E.M.I.N.D   - -    - *
+#              * -  Copyright © 2026 (Z) Programing  - *
+#              *    -  -  All Rights Reserved  -  -    *
+#              * * * * * * * * * * * * * * * * * * * * *
+
 import abc
 import threading
 import uuid
@@ -75,6 +89,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         retryDelaySeconds: int = 5,
         failSilently: bool = False,
         chainUuid: Optional[str] = None,
+        tags: Optional[set[str]] = None,
     ):
         """
         Initialize the abstract task.
@@ -86,6 +101,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
             retryDelaySeconds: Seconds to wait before retry
             failSilently: If True, errors won't be propagated
             chainUuid: Optional UUID of the parent TaskChain
+            tags: Set of tags for categorizing the task
         """
         QtCore.QObject.__init__(self)
         # QtCore.QRunnable.__init__(self)
@@ -108,6 +124,11 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         self.currentRetryAttempts = 0
         self.failSilently = failSilently
         self._stopEvent = threading.Event()
+        
+        # Tags Management
+        self.tags = tags if tags is not None else set()
+        self.tags.add(self.__class__.__name__)
+        
         logger.debug(f'Task created: {self.uuid} - {self.name}' + (f' (chain: {chainUuid})' if chainUuid else ''))
 
     serializables: Optional[Any] = None
@@ -132,6 +153,18 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         self.progress = max(0, min(100, value))
         logger.debug(f'Task {self.uuid} progress: {self.progress}%')
         self.progressUpdated.emit(self.uuid, self.progress)
+
+    def addTag(self, tag: str) -> None:
+        """Add a tag to the task."""
+        self.tags.add(tag)
+
+    def removeTag(self, tag: str) -> None:
+        """Remove a tag from the task."""
+        self.tags.discard(tag)
+
+    def hasTag(self, tag: str) -> bool:
+        """Check if task has a specific tag."""
+        return tag in self.tags
 
     def setChainContext(self, context: 'ChainContext') -> None:
         """
@@ -205,6 +238,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
             'currentRetryAttempts': self.currentRetryAttempts,
             'failSilently': self.failSilently,
             'chainUuid': self.chainUuid,
+            'tags': list(self.tags),
         }
         coreKeys = set(data.keys())
         def _to_serializable(v: Any) -> Any:

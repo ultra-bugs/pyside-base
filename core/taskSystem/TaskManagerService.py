@@ -5,6 +5,20 @@ Main orchestrator for the TaskSystem. Coordinates TaskQueue, TaskTracker, and Ta
 Provides the primary API for other parts of the application to interact with tasks.
 """
 
+#              M""""""""`M            dP
+#              Mmmmmm   .M            88
+#              MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
+#              MMP  .MMMMM  88    88  88888"    88'  `88
+#              M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
+#              M         M  `88888P'  dP   `YP  `88888P'
+#              MMMMMMMMMMM    -*-  Created by Zuko  -*-
+#
+#              * * * * * * * * * * * * * * * * * * * * *
+#              * -    - -   F.R.E.E.M.I.N.D   - -    - *
+#              * -  Copyright © 2026 (Z) Programing  - *
+#              *    -  -  All Rights Reserved  -  -    *
+#              * * * * * * * * * * * * * * * * * * * * *
+
 from typing import Any, Dict, List, Optional
 from PySide6 import QtCore
 from .ChainRetryBehavior import ChainRetryBehavior
@@ -144,6 +158,44 @@ class TaskManagerService(QtCore.QObject):
         self.addTask(chain, scheduleInfo=scheduleInfo)
         logger.info(f'TaskChain created and added: {chain.uuid} - {chain.name}')
         return chain
+
+    def stopTasksByTag(self, tag: str, includeChainedChildren: bool = False) -> None:
+        """
+        Stop all tasks with the specified tag.
+        Args:
+            tag: Tag to target
+            includeChainedChildren: If True, also stop tasks marked as _ChainedChild
+        """
+        targetUuids = self._taskTracker.getUuidsByTag(tag)
+        if not includeChainedChildren:
+            chainedUuids = self._taskTracker.getUuidsByTag('_ChainedChild')
+            targetUuids = targetUuids - chainedUuids
+
+        logger.info(f"Bulk stopping tasks with tag '{tag}': {len(targetUuids)} tasks targeted.")
+        for uuid in targetUuids:
+            try:
+                self.cancelTask(uuid)
+            except Exception as e:
+                logger.warning(f"Failed to stop task {uuid} during bulk operation: {e}")
+
+    def pauseTasksByTag(self, tag: str, includeChainedChildren: bool = False) -> None:
+        """
+        Pause all tasks with the specified tag.
+        Args:
+           tag: Tag to target
+           includeChainedChildren: If True, also pause tasks marked as _ChainedChild
+        """
+        targetUuids = self._taskTracker.getUuidsByTag(tag)
+        if not includeChainedChildren:
+            chainedUuids = self._taskTracker.getUuidsByTag('_ChainedChild')
+            targetUuids = targetUuids - chainedUuids
+
+        logger.info(f"Bulk pausing tasks with tag '{tag}': {len(targetUuids)} tasks targeted.")
+        for uuid in targetUuids:
+            try:
+                self.pauseTask(uuid)
+            except Exception as e:
+                logger.warning(f"Failed to pause task {uuid} during bulk operation: {e}")
 
     def cancelTask(self, uuid: str) -> None:
         """

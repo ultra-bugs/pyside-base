@@ -5,6 +5,21 @@ Tracks active tasks and maintains history of failed tasks with persistence.
 Monitors task status, progress, and logs failures for analysis.
 """
 
+#              M""""""""`M            dP
+#              Mmmmmm   .M            88
+#              MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
+#              MMP  .MMMMM  88    88  88888"    88'  `88
+#              M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
+#              M         M  `88888P'  dP   `YP  `88888P'
+#              MMMMMMMMMMM    -*-  Created by Zuko  -*-
+#
+#              * * * * * * * * * * * * * * * * * * * * *
+#              * -    - -   F.R.E.E.M.I.N.D   - -    - *
+#              * -  Copyright © 2026 (Z) Programing  - *
+#              *    -  -  All Rights Reserved  -  -    *
+#              * * * * * * * * * * * * * * * * * * * * *
+
+import threading
 from datetime import datetime
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from PySide6 import QtCore
@@ -37,6 +52,9 @@ class TaskTracker(QtCore.QObject):
         self._completedTaskHistory: List[Dict[str, Any]] = []
         # Stores metadata for tasks that are part of a chain
         self._chainChildTasks: Dict[str, Dict[str, Any]] = {}
+        # Reverse Indexing: Tag -> Set[UUID]
+        self._tagIndex: Dict[str, set[str]] = {}
+        self._lock = threading.RLock()
         self.loadState()
         logger.info('TaskTracker initialized')
 
@@ -46,46 +64,55 @@ class TaskTracker(QtCore.QObject):
 
     def addTask(self, task: Any) -> None:
         """Add a task (or chain) to tracking and connect signals."""
-        uuid = task.uuid
-        if uuid in self._activeTasks:
-            logger.warning(f'Task {uuid} already tracked')
-            return
-        isChain = self._isTaskChain(task)
-        self._activeTasks[uuid] = task
-        # Connect signals for the main task
-        self._connectTaskSignals(task)
-        # Handle Chain Children
-        if isChain:
-            for child in task._tasks:
-                childUuid = child.uuid
-                self._chainChildTasks[childUuid] = {'isChainChild': True, 'chainUuid': uuid, 'parentChainName': task.name}
-                # Track child if not already tracked
-                if childUuid not in self._activeTasks:
-                    self._activeTasks[childUuid] = child
-                    self._connectTaskSignals(child)
-        logger.info(f'Task added: {uuid} ({task.name})')
-        self.taskAdded.emit(uuid)
+        with self._lock:
+            uuid = task.uuid
+            if uuid in self._activeTasks:
+                logger.warning(f'Task {uuid} already tracked')
+                return
+            isChain = self._isTaskChain(task)
+            self._activeTasks[uuid] = task
+            # Connect signals for the main task
+            self._connectTaskSignals(task)
+            # Index tags
+            self._indexTask(task)
+
+            # Handle Chain Children
+            if isChain:
+                for child in task._tasks:
+                    childUuid = child.uuid
+                    self._chainChildTasks[childUuid] = {'isChainChild': True, 'chainUuid': uuid, 'parentChainName': task.name}
+                    # Track child if not already tracked
+                    if childUuid not in self._activeTasks:
+                        self._activeTasks[childUuid] = child
+                        self._connectTaskSignals(child)
+                        self._indexTask(child)
+            logger.info(f'Task added: {uuid} ({task.name})')
+            self.taskAdded.emit(uuid)
 
     def removeTask(self, uuid: str) -> None:
         """Remove task from tracking and disconnect signals."""
-        if uuid not in self._activeTasks:
-            raise TaskNotFoundException(uuid, f'Cannot remove {uuid}: not tracked')
-        # Retrieve and remove the main task
-        task = self._activeTasks.pop(uuid)
-        # Cleanup if it is a Chain
-        if self._isTaskChain(task):
-            for child in task._tasks:
-                c_uuid = child.uuid
-                self._chainChildTasks.pop(c_uuid, None)
-                if c_uuid in self._activeTasks:
-                    child_task = self._activeTasks.pop(c_uuid)
-                    self._disconnectTaskSignals(child_task)
-        # Cleanup metadata if it was a child
-        self._chainChildTasks.pop(uuid, None)
-        # Disconnect main task
-        self._disconnectTaskSignals(task)
-        logger.info(f'Task removed: {uuid} ({task.name})')
-        self.taskRemoved.emit(uuid)
+        with self._lock:
+            if uuid not in self._activeTasks:
+                raise TaskNotFoundException(uuid, f'Cannot remove {uuid}: not tracked')
+            # Retrieve and remove the main task
+            task = self._activeTasks.pop(uuid)
+            self._unindexTask(task)
+
+            # Cleanup if it is a Chain
+            if self._isTaskChain(task):
+                for child in task._tasks:
+                    c_uuid = child.uuid
+                    self._chainChildTasks.pop(c_uuid, None)
+                    if c_uuid in self._activeTasks:
+                        child_task = self._activeTasks.pop(c_uuid)
+                        self._disconnectTaskSignals(child_task)
+                        self._unindexTask(child_task)
+            # Cleanup metadata if it was a child
+            self._chainChildTasks.pop(uuid, None)
+            # Disconnect main task
+            self._disconnectTaskSignals(task)
+            logger.info(f'Task removed: {uuid} ({task.name})')
+            self.taskRemoved.emit(uuid)
 
     def getTaskInfo(self, uuid: str) -> Dict[str, Any]:
         """Get serialized info for a task."""
@@ -119,9 +146,31 @@ class TaskTracker(QtCore.QObject):
         logger.warning(f'Failed task: {task.uuid} - {task.error}')
         self.failedTaskLogged.emit(data)
 
+    def getUuidsByTag(self, tag: str) -> set[str]:
+        """Get all UUIDs associated with a tag."""
+        with self._lock:
+            return self._tagIndex.get(tag, set()).copy()
+
     # -------------------------------------------------------------------------
     # Internal Logic & Persistence
     # -------------------------------------------------------------------------
+
+    def _indexTask(self, task: Any) -> None:
+        """Helper to index tags for a task."""
+        if hasattr(task, 'tags'):
+            for tag in task.tags:
+                if tag not in self._tagIndex:
+                    self._tagIndex[tag] = set()
+                self._tagIndex[tag].add(task.uuid)
+
+    def _unindexTask(self, task: Any) -> None:
+        """Helper to remove tags for a task."""
+        if hasattr(task, 'tags'):
+            for tag in task.tags:
+                if tag in self._tagIndex:
+                    self._tagIndex[tag].discard(task.uuid)
+                    if not self._tagIndex[tag]:
+                        del self._tagIndex[tag]
 
     def _connectTaskSignals(self, task: Any):
         """Connect task signals to internal handlers."""
