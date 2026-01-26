@@ -28,6 +28,18 @@ from core.Logging import logger
 from core.Utils import PathHelper
 
 from .BaseStorage import BaseStorage
+from core.model.DictSerializable import DictSerializable
+
+
+class CustomJsonEncoder(json.JSONEncoder):
+    """
+    Custom JSON Encoder that handles DictSerializable objects.
+    """
+
+    def default(self, o):
+        if isinstance(o, DictSerializable):
+            return o.toDict()
+        return super().default(o)
 
 logger = logger.bind(component='TaskSystem')
 
@@ -58,7 +70,7 @@ class JsonStorage(BaseStorage):
                 else:
                     self._data = {}
             except Exception as e:
-                logger.error(f'Failed to load task storage from {self._file_path}: {e}')
+                logger.opt(exception=e).error(f'Failed to load task storage from {self._file_path}: {e}')
                 self._data = {}
 
     def _save_file(self) -> None:
@@ -67,9 +79,9 @@ class JsonStorage(BaseStorage):
             try:
                 PathHelper.ensureParentDirExists(self._file_path)
                 with open(self._file_path, 'w', encoding='utf-8') as f:
-                    json.dump(self._data, f, indent=4)
+                    json.dump(self._data, f, indent=4, cls=CustomJsonEncoder)
             except Exception as e:
-                logger.error(f'Failed to save task storage to {self._file_path}: {e}')
+                logger.opt(exception=e).error(f'Failed to save task storage to {self._file_path}: {e}')
 
     def load(self, key: str, default: Any = None) -> Any:
         """

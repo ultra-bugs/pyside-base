@@ -12,7 +12,7 @@
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
 
-import collections.abc
+import collections
 from collections import defaultdict
 from copy import deepcopy
 

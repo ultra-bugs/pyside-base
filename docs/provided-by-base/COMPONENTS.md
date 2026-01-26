@@ -149,40 +149,6 @@ task_handler = TaskSelectorHandler(task_selector, task_selector.events)
 task_selector.taskSelected.connect(self.on_task_selected)
 ```
 
-## Development Patterns
-
-### Observer Pattern
-
-Tất cả components sử dụng Observer pattern:
-
-```python
-# Widget định nghĩa slot_map
-slot_map = {
-    'event_name': ['widgetName', 'signalName'],
-}
-
-# Handler implement on_event_name methods
-def on_event_name(self, data=None):
-    # Handle event logic
-    pass
-```
-
-### Signal Emission
-
-Components emit signals cho external communication:
-
-```python
-class MyWidget(BaseController):
-    # Define signals
-    dataChanged = Signal(dict)
-    itemSelected = Signal(object)
-    
-    def some_method(self):
-        # Emit signals với data
-        self.dataChanged.emit({'key': 'value'})
-        self.itemSelected.emit(selected_item)
-```
-
 ### Configuration Management
 
 Components có thể save/load settings:
@@ -196,61 +162,6 @@ def load_settings_from_config(self):
     config = Config()
     setting = config.get('component.setting', default_value)
     self.set_setting(setting)
-```
-
-## Best Practices
-
-### 1. UI Design
-- Sử dụng meaningful object names
-- Set tooltips và status tips
-- Configure sane defaults
-- `ComponentName.ui` - UI definition
-- `ComponentName.py` - Generated UI code (DON'T EDIT)
-- `ComponentNameWidget.py` - Widget implementation
-- `ComponentNameHandler.py` - Event handler
-- `__init__.py` - Module exports
-
-### 2. Widget Implementation
-- Kế thừa: `BaseController`, `QWidget`, `Ui_ComponentName`. Đúng thứ tự
-- Định nghĩa `slot_map` đầy đủ
-- Setup UI trong `__init__`
-- Emit signals cho external communication
-- Implement data getters/setters
-
-### 3. Handler Implementation
-- Kế thừa từ `Subscriber`
-- Prefix methods với `on_`
-- Handle exceptions properly
-- Log important events
-- Keep methods focused
-
-### 4. Error Handling
-- Wrap event handlers trong try-catch
-- Log errors với context
-- Graceful degradation
-```python
-def on_some_event(self, data=None):
-    try:
-        # Event handling logic
-        pass
-    except Exception as e:
-        from core.Logging import logger
-        logger.error(f"Error handling event: {e}")
-```
-
-### 5. Signal Management
-- Emit typed signals với meaningful data
-- Document signal parameters
-- Use descriptive signal names
-
-### 6. Logging
-```python
-from core.Logging import logger
-
-logger.info("Component initialized")
-logger.debug("Debug information")
-logger.warning("Warning message")
-logger.error("Error message")
 ```
 
 ## Testing Components
@@ -275,41 +186,3 @@ def test_component_integration():
     parent.setup_components()
     # Test component interaction
 ```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Import Errors**
-   - Check `__init__.py` exports
-   - Verify file names match class names
-
-2. **Slot Map Not Working**
-   - Check widget object names trong `.ui` file
-   - Verify signal names are correct
-
-3. **Handler Not Receiving Events**
-   - Ensure handler created với correct events
-   - Check `BaseController.__init__` called
-
-4. **UI Not Loading**
-   - Verify `.py` file generated từ `.ui`
-   - Check import paths
-
-### Debug Tips
-
-- Enable debug logging để trace events
-- Use breakpoints trong event handlers
-- Test components independently trước khi integrate
-- Check Qt object names trong Designer
-
-## Migration từ Old Pattern
-
-Để migrate component cũ sang pattern mới:
-
-1. **Tạo .ui file** từ existing UI code
-2. **Generate .py file** từ .ui
-3. **Extract Widget logic** từ old component
-4. **Extract Handler logic** sang separate handler
-5. **Update usage** trong parent controllers
-6. **Test functionality** thoroughly

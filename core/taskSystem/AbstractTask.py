@@ -30,6 +30,7 @@ from PySide6 import QtCore
 from ..Logging import logger
 from .Exceptions import TaskCancellationException
 from .TaskStatus import TaskStatus
+from .UniqueType import UniqueType
 
 if TYPE_CHECKING:
     from .ChainContext import ChainContext
@@ -92,6 +93,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         failSilently: bool = False,
         chainUuid: Optional[str] = None,
         tags: Optional[set[str]] = None,
+        uniqueType: UniqueType = UniqueType.NONE,
     ):
         """
         Initialize the abstract task.
@@ -104,6 +106,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
             failSilently: If True, errors won't be propagated
             chainUuid: Optional UUID of the parent TaskChain
             tags: Set of tags for categorizing the task
+            uniqueType: Uniqueness constraint for the task
         """
         QtCore.QObject.__init__(self)
         # QtCore.QRunnable.__init__(self)
@@ -128,10 +131,23 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         self._stopEvent = threading.Event()
         # Tags Management
         self.tags = tags if tags is not None else set()
+        # Handle deserialization: tags might come as list from JSON
+        if isinstance(self.tags, list):
+            self.tags = set(self.tags)
         self.tags.add(self.__class__.__name__)
+        # Unique Task Features
+        self.uniqueType = uniqueType
         logger.debug(f'Task created: {self.uuid} - {self.name}' + (f' (chain: {chainUuid})' if chainUuid else ''))
 
     serializables: Optional[Any] = None
+
+    def uniqueVia(self) -> str:
+        """
+        Define the unique key for the task.
+        Default is the class name.
+        Override this to provide a dynamic unique key (e.g., based on target file).
+        """
+        return self.__class__.__name__
 
     def setStatus(self, newStatus: TaskStatus) -> None:
         """
@@ -245,6 +261,8 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
             if isinstance(v, datetime):
                 return v.isoformat()
             if isinstance(v, TaskStatus):
+                return v.name
+            if isinstance(v, UniqueType):
                 return v.name
             if callable(v):
                 raise TypeError('Cannot serialize callable')

@@ -27,6 +27,15 @@ from ..Logging import logger
 logger = logger.bind(component='TaskSystem')
 
 
+class TaskFailedException(Exception):
+    pass
+
+
+class TaskUniqueViolationException(Exception):
+    """Raised when a unique task constraint is violated."""
+    pass
+
+
 class TaskSystemException(AppException):
     """
     Base exception for all TaskSystem-related errors.

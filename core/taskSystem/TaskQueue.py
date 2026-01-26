@@ -31,6 +31,7 @@ from .Exceptions import TaskNotFoundException
 from .storage.BaseStorage import BaseStorage
 from .TaskStatus import TaskStatus
 from .TaskTracker import TaskTracker
+from .UniqueType import UniqueType
 
 # Initialize logger for TaskSystem
 logger = logger.bind(component='TaskSystem')
@@ -75,6 +76,8 @@ class TaskQueue(QtCore.QObject):
         # Task queues
         self._pendingTasks = deque()  # FIFO queue of pending tasks
         self._runningTasks = {}  # uuid -> task mapping
+        # Unique Task Index: key -> {'pending': int, 'running': int}
+        self._activeUniqueKeys: dict[str, dict[str, int]] = {}
         # Thread pool for task execution
         self._threadPool = QtCore.QThreadPool.globalInstance()
         self._threadPool.setMaxThreadCount(maxConcurrentTasks)
@@ -88,6 +91,25 @@ class TaskQueue(QtCore.QObject):
         Args:
             task: AbstractTask instance to queue
         """
+        # Check Uniqueness Constraints
+        if task.uniqueType != UniqueType.NONE:
+            key = task.uniqueVia()
+            stats = self._activeUniqueKeys.get(key, {'pending': 0, 'running': 0})
+            
+            if task.uniqueType == UniqueType.JOB:
+                if stats['pending'] > 0 or stats['running'] > 0:
+                    logger.warning(f"UniqueJob violation: Task '{task.name}' with key '{key}' already exists (Pending: {stats['pending']}, Running: {stats['running']}). Ignoring.")
+                    return
+            elif task.uniqueType == UniqueType.UNTIL_PROCESSING:
+                if stats['pending'] > 0:
+                    logger.warning(f"UniqueUntilProcessing violation: Task '{task.name}' with key '{key}' already pending. Ignoring.")
+                    return
+
+            # Update Index (Add to Pending)
+            if key not in self._activeUniqueKeys:
+                self._activeUniqueKeys[key] = {'pending': 0, 'running': 0}
+            self._activeUniqueKeys[key]['pending'] += 1
+
         # Add to pending queue
         self._pendingTasks.append(task)
         # Add to tracker
@@ -126,11 +148,28 @@ class TaskQueue(QtCore.QObject):
         # Check if we can start more tasks
         while len(self._runningTasks) < self._maxConcurrentTasks and self._pendingTasks:
             task = self._pendingTasks.popleft()
+            
+            # Update Unique Index (Remove from Pending)
+            if task.uniqueType != UniqueType.NONE:
+                key = task.uniqueVia()
+                if key in self._activeUniqueKeys:
+                    self._activeUniqueKeys[key]['pending'] -= 1
+            
             # Skip if task was already cancelled
             if task.status == TaskStatus.CANCELLED:
                 logger.info(f'Skipping cancelled task: {task.uuid}')
                 self._taskTracker.removeTask(task.uuid)
+                # Cleanup unique key if empty
+                if task.uniqueType != UniqueType.NONE:
+                     self._cleanupUniqueKey(task.uniqueVia())
                 continue
+            
+            # Update Unique Index (Add to Running)
+            if task.uniqueType != UniqueType.NONE:
+                key = task.uniqueVia()
+                if key in self._activeUniqueKeys:
+                     self._activeUniqueKeys[key]['running'] += 1
+
             # Move to running
             self._runningTasks[task.uuid] = task
             # Connect to task finished signal
@@ -156,6 +195,14 @@ class TaskQueue(QtCore.QObject):
             logger.critical('--------------- NEED RECHECK')
             return
         task = self._runningTasks.pop(uuid)
+        
+        # Update Unique Index (Remove from Running)
+        if task.uniqueType != UniqueType.NONE:
+            key = task.uniqueVia()
+            if key in self._activeUniqueKeys:
+                self._activeUniqueKeys[key]['running'] -= 1
+            self._cleanupUniqueKey(key)
+
         logger.info(f'Task completed: {uuid} - Status: {finalStatus.name}')
         # Handle retry logic for failed tasks
         if finalStatus == TaskStatus.FAILED and task.currentRetryAttempts < task.maxRetries:
@@ -242,3 +289,13 @@ class TaskQueue(QtCore.QObject):
             'maxConcurrent': self._maxConcurrentTasks,
             'threadPoolActive': self._threadPool.activeThreadCount(),
         }
+
+    def _cleanupUniqueKey(self, key: str) -> None:
+        """
+        Remove key from active index if no pending or running tasks exist.
+        """
+        if key in self._activeUniqueKeys:
+            stats = self._activeUniqueKeys[key]
+            if stats['pending'] <= 0 and stats['running'] <= 0:
+                del self._activeUniqueKeys[key]
+

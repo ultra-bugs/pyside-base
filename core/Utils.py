@@ -850,7 +850,21 @@ class WidgetUtils:
 
     @staticmethod
     def _createMsgBox(controller=None):
-        msg_box = QMessageBox(controller)
+        from PySide6.QtWidgets import QWidget
+        from PySide6.QtGui import QWindow
+        
+        # Ensure controller is QWidget or None
+        parent = None
+        if controller is not None:
+            if isinstance(controller, QWidget):
+                parent = controller
+            elif isinstance(controller, QWindow):
+                # Try to get the widget from window
+                parent = None
+            else:
+                parent = None
+        
+        msg_box = QMessageBox(parent)
         msg_box.setWindowIcon(AppHelper.getAppIcon())
         return msg_box
 
