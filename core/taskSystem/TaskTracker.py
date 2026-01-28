@@ -188,11 +188,12 @@ class TaskTracker(QtCore.QObject):
         """Disconnect signal from slot, ignoring errors if not connected."""
         try:
             signal.disconnect(slot)
-        except (RuntimeError, TypeError, RuntimeWarning):
+        except (RuntimeError, TypeError, RuntimeWarning) as e:
+            logger.opt(exception=e).warning(str(e))
             # Signal was not connected or object already deleted
             pass
         except Exception as e:
-            logger.debug(f'Unexpected disconnect error: {e}')
+            logger.opt(exception=e).debug(f'Unexpected disconnect error: {e}')
 
     def _onTaskStatusChanged(self, uuid: str, status: TaskStatus):
         # logger.debug(f'Task {uuid} status: {status.name}') # Reduce spam

@@ -90,7 +90,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         isPersistent: bool = False,
         maxRetries: int = 0,
         retryDelaySeconds: int = 5,
-        failSilently: bool = False,
+        failSilently: bool = True,
         chainUuid: Optional[str] = None,
         tags: Optional[set[str]] = None,
         uniqueType: UniqueType = UniqueType.NONE,
@@ -119,6 +119,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         self.progress = 0
         self.result: Optional[Any] = None
         self.error: Optional[str] = None
+        self.errorException: Optional[Exception] = None
         self.createdAt = datetime.now()
         self.startedAt: Optional[datetime] = None
         self.finishedAt: Optional[datetime] = None
@@ -216,17 +217,22 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         except Exception as e:
             logger.error(f'Error during cancellation cleanup for task {self.uuid}: {e}')
 
-    def fail(self, reason: str = 'Task failed by itself') -> None:
+    def fail(self, reason: str = 'Task failed by itself', exception: Optional[Exception] = None) -> None:
         """
         Mark task as failed with a reason.
         Args:
-            reason: Description of why the task failed
+            :param reason: Description of why the task failed
+            :param exception: Exception
         """
         logger.warning(f'Task {self.uuid} failed: {reason}')
         self.error = reason
         self.setStatus(TaskStatus.FAILED)
-        raise TaskFailedException(reason)
-
+        if not exception:
+            exception = TaskFailedException(reason)
+        self.errorException = exception
+        if not self.failSilently:
+            raise self.errorException
+        
     def serialize(self) -> Dict[str, Any]:
         """
         Serialize task to dictionary for persistence.
@@ -258,6 +264,8 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         }
         coreKeys = set(data.keys())
         def _to_serializable(v: Any) -> Any:
+            if isinstance(v, Exception):
+                return v.__class__.__name__ + ': ' + str(v)
             if isinstance(v, datetime):
                 return v.isoformat()
             if isinstance(v, TaskStatus):

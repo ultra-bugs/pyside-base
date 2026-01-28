@@ -187,4 +187,4 @@ class Subscriber:
                 logger.opt(exception=e).exception(f'Exception in event handler: {self.__class__.__name__}.{method_name}')
                 from .Exceptions import ExceptionHandler
                 handler = ExceptionHandler()
-                handler.handle_exception(e)
+                handler.HandleException(e)

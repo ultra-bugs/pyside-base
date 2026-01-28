@@ -195,7 +195,7 @@ class QtAppContext(QObject):
         self._services.registerScoped(tag, instance)
         return self
 
-    def releaseScope(self, tag: str) -> None:
+    def releaseScope(self, tag: str) -> Self:
         """Cleanup all services associated with a tag."""
         self._services.releaseScope(tag)
         return self

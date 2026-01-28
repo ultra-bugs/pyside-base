@@ -94,20 +94,46 @@ class ExceptionHandler:
         """Default exception handler"""
         from .Logging import logger
         from .Utils import WidgetUtils
-        try:
-            app = QApplication.instance()
-            parentWidget = app.centralWidget() if hasattr(app, 'centralWidget') else app.allWindows()[-1]
-        except AttributeError:
-            parentWidget = None
+        from PySide6.QtCore import QTimer, QThread
+        
+        # Log the exception first
         if isinstance(e, AppException):
             logger.exception('App exception')
             logger.opt(exception=e).error(str(e))
-            WidgetUtils.showErrorMsgBox(parentWidget, str(e), e.title)
-            return True
+            error_msg = str(e)
+            error_title = e.title
         else:
             logger.exception('Unhandled exception', e)
             logger.opt(exception=e).error(str(e))
-            WidgetUtils.showErrorMsgBox(parentWidget, str(e), 'Unhandled Error')
+            error_msg = str(e)
+            error_title = 'Unhandled Error'
+        
+        # Show messageBox only if we have a QApplication instance
+        try:
+            app = QApplication.instance()
+            if app is None:
+                return True
+                
+            # Determine parent widget
+            try:
+                parentWidget = app.centralWidget() if hasattr(app, 'centralWidget') else None
+                if parentWidget is None and app.allWindows():
+                    parentWidget = app.allWindows()[-1]
+            except (AttributeError, IndexError):
+                parentWidget = None
+            
+            # Check if we're on main thread
+            if QThread.currentThread() == app.thread():
+                # We're on main thread, show directly
+                WidgetUtils.showErrorMsgBox(parentWidget, error_msg, error_title)
+            else:
+                # We're on worker thread, use QTimer to invoke on main thread
+                # QTimer.singleShot with 0 delay schedules execution on main thread's event loop
+                QTimer.singleShot(0, lambda: WidgetUtils.showErrorMsgBox(parentWidget, error_msg, error_title))
+            
+            return True
+        except Exception as show_error:
+            logger.error(f'Failed to show error dialog: {show_error}')
             return True
 
     @classmethod

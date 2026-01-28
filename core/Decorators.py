@@ -85,6 +85,7 @@ def catchExceptInMsgBox(
                 if err is None:
                     err = f'Runtime error in {func.__name__}: {exception}'
                 from core import WidgetUtils
+
                 msg = WidgetUtils.showErrorMsgBox(None, errorMsg, createOnly=True)
                 msg.setInformativeText(f'{type(exception).__name__}: {exception}')
                 trace_msg = f'Traceback:\n{traceback.format_exc()}'
@@ -94,4 +95,60 @@ def catchExceptInMsgBox(
                 msg.exec()
             if reRaise:
                 raise
+
     return showExceptInMsgBox
+
+
+import time
+from functools import wraps
+from typing import Callable, Any, TypeVar, ParamSpec
+
+P = ParamSpec('P')
+R = TypeVar('R')
+
+
+def cachedWithTtl(ttlMs: int) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    """
+    Decorator that caches function results with a time-to-live (TTL) boundary.
+
+    Args:
+        ttlMs: Time-to-live in milliseconds. Cache is invalidated after this duration.
+
+    Returns:
+        Decorated function with time-bounded caching.
+
+    Example:
+        @cachedWithTtl(5000)  # Cache for 5 seconds
+        def expensive_function(x):
+            return x * 2
+    """
+
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
+        cache: dict[tuple, tuple[float, Any]] = {}
+
+        @wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            # Create cache key from arguments
+            key = (args, tuple(sorted(kwargs.items())))
+
+            current_time = time.time() * 1000  # Convert to milliseconds
+
+            # Check if cached result exists and is still valid
+            if key in cache:
+                cached_time, cached_value = cache[key]
+                if current_time - cached_time < ttlMs:
+                    return cached_value
+
+            # Execute function and cache result
+            result = func(*args, **kwargs)
+            cache[key] = (current_time, result)
+
+            return result
+
+        # Add cache inspection methods
+        wrapper.cache_info = lambda: {'size': len(cache), 'ttlMs': ttlMs}
+        wrapper.cache_clear = lambda: cache.clear()
+        
+        return wrapper
+    
+    return decorator
