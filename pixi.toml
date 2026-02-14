@@ -69,5 +69,7 @@ check = { depends-on = ["lint", "type-check", "sort-check"] }
 # Utilities
 check-pixi = "python -c \"import sys,platform; print('Pixi OK'); print('Python:', sys.version); print('Platform:', platform.platform())\""
 clean-logs = "python -c \"import shutil, os; p='data\\\\logs'; shutil.rmtree(p, ignore_errors=True); os.makedirs(p, exist_ok=True); print('Cleaned logs in', p)\""
+cleanpyc = "python scripts/clean_pyc.py"
+
 [target.win-64.pypi-dependencies]
-pywin32 = ">=311, <312"
+#pywin32 = ">=311, <312"
