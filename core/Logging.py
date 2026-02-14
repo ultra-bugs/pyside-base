@@ -74,7 +74,7 @@ def setupLogging():
 
 
 logger = setupLogging()
-
+logger.warn = logger.warning
 from contextlib import contextmanager
 
 
@@ -91,3 +91,4 @@ def logContext(**kwargs):
         yield logger_with_context
     finally:
         pass
+__all__ = ['logContext', 'setupLogging', 'logger']

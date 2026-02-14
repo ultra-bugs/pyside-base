@@ -1,6 +1,6 @@
 # Testing Guide
 
-**IMPORTANT: Thứ mục test_core ở trong document được nói tới dưới đây là dành cho framework.
+**IMPORTANT: Thứ mục test_core ở trong document được nói tới dưới đây là dành cho base creator (`core` namespace).
 Application's test cases should put tests to `tests` directory only**
 
 ## Running Tests

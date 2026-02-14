@@ -56,6 +56,11 @@ class BaseController(metaclass=ControllerMeta):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        # Auto-enable delete-on-close for QDialog subclasses so destroyed signal fires
+        from PySide6.QtWidgets import QDialog
+        if isinstance(self, QDialog):
+            from PySide6.QtCore import Qt
+            self.setAttribute(Qt.WA_DeleteOnClose)
         self.widgetManager = WidgetManager(self)
         self.controllerName = self.__class__.__name__
         self.publisher = Publisher()
@@ -77,12 +82,21 @@ class BaseController(metaclass=ControllerMeta):
                         continue
                     handlerModule = importlib.import_module(f'{module}.{cls}Handler')
                     self.handler = getattr(handlerModule, f'{cls}Handler')(widgetManager=self.widgetManager, events=list(self.slot_map.keys()))
+                    # self.handler = getattr(handlerModule, f'{cls}Handler')(widgetManager=self.widgetManager, events=[])
                     break
                 except (ModuleNotFoundError, TypeError, ValueError) as e:
                     logger.warning(f'Exception raised when trying to setup handler: {e}')
                     continue
         if self.is_auto_connect_signal and hasattr(self, 'handler'):
             self._connect_signals()
+            self.destroyed.connect(self._onDestroyed)
+
+    def _onDestroyed(self):
+        """Auto-unsubscribe handler from Publisher on controller destroy"""
+        if hasattr(self, 'handler'):
+            for eventName in self.handler.events:
+                self.publisher.unsubscribe(self.handler, eventName)
+            logger.debug(f'{self.controllerName} destroyed — handler unsubscribed')
 
     @abstractmethod
     def setupUi(self, widget):

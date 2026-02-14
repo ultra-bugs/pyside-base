@@ -176,22 +176,22 @@ def test_save_state(mock_config):
 
 
 def test_task_status_changed_signal(mock_config, qtbot):
-    """Test that tracker emits taskUpdated when task status changes."""
+    """Test that tracker emits taskStatusUpdated when task status changes."""
     mock_config.load.return_value = []
     tracker = TaskTracker(mock_config)
     task = ConcreteTask(name='Test Task')
     tracker.addTask(task)
-    with qtbot.waitSignal(tracker.taskUpdated, timeout=1000):
+    with qtbot.waitSignal(tracker.taskStatusUpdated, timeout=1000):
         task.setStatus(TaskStatus.RUNNING)
 
 
 def test_task_progress_updated_signal(mock_config, qtbot):
-    """Test that tracker emits taskUpdated when task progress changes."""
+    """Test that tracker emits taskStatusUpdated when task progress changes."""
     mock_config.load.return_value = []
     tracker = TaskTracker(mock_config)
     task = ConcreteTask(name='Test Task')
     tracker.addTask(task)
-    with qtbot.waitSignal(tracker.taskUpdated, timeout=1000):
+    with qtbot.waitSignal(tracker.taskStatusUpdated, timeout=1000):
         task.setProgress(50)
 
 
@@ -201,5 +201,5 @@ def test_task_finished_signal(mock_config, qtbot):
     tracker = TaskTracker(mock_config)
     task = ConcreteTask(name='Test Task')
     tracker.addTask(task)
-    with qtbot.waitSignal(tracker.taskUpdated, timeout=2000):
+    with qtbot.waitSignal(tracker.taskStatusUpdated, timeout=2000):
         task.run()

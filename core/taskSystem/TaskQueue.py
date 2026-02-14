@@ -21,7 +21,7 @@ Submits tasks to QThreadPool and handles task completion/retry.
 
 #
 from collections import deque
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from PySide6 import QtCore
 
@@ -180,7 +180,7 @@ class TaskQueue(QtCore.QObject):
             self.taskDequeued.emit(task.uuid)
             self.queueStatusChanged.emit()
 
-    def _handleTaskCompletion(self, uuid: str, finalStatus: TaskStatus, result: Any, error: Optional[str]) -> None:
+    def _handleTaskCompletion(self, uuid: str, task, result: Any, error: Optional[Dict[str, str|Exception]]) -> None:
         """
         Handle task completion, including retry logic.
         Args:
@@ -190,6 +190,7 @@ class TaskQueue(QtCore.QObject):
             error: Error message (if failed)
         """
         # Get task from running tasks
+        finalStatus: TaskStatus = task.status
         if uuid not in self._runningTasks:
             logger.critical(f'Task {uuid} not found in running tasks')
             logger.critical('--------------- NEED RECHECK')

@@ -54,6 +54,8 @@ class DataTrackingMixin:
         elif hasattr(value, '__dict__'):
             value = deepcopy(value)
         elif hasattr(value, 'to_dict') and callable(getattr(value, 'to_dict')):
+            value = deepcopy(value.to_dict())
+        elif hasattr(value, 'toDict') and callable(getattr(value, 'toDict')):
             value = deepcopy(value.toDict())
         self._data[key] = value
 
@@ -118,7 +120,10 @@ class DataTrackingMixin:
             return obj1 == obj2
         if hasattr(obj1, '__dict__') and hasattr(obj2, '__dict__'):
             return obj1.__dict__ == obj2.__dict__
-        if hasattr(obj1, 'to_dict') and hasattr(obj2, 'to_dict') and callable(obj1.toDict) and callable(obj2.toDict):
+        if hasattr(obj1, 'toDict') and hasattr(obj2, 'toDict') and callable(obj1.toDict) and callable(obj2.toDict):
             obj1 = obj1.toDict()
             obj2 = obj2.toDict()
+        if hasattr(obj1, 'to_dict') and hasattr(obj2, 'to_dict') and callable(obj1.to_dict) and callable(obj2.to_dict):
+            obj1 = obj1.to_dict()
+            obj2 = obj2.to_dict()
         return obj1 == obj2

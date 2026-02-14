@@ -81,7 +81,8 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
 
     statusChanged = QtCore.Signal(str, object)
     progressUpdated = QtCore.Signal(str, int)
-    taskFinished = QtCore.Signal(str, object, object, str)
+    taskFinished = QtCore.Signal(str, object, object, object) # uuid, self instance, result, error|None
+    # error object: {message: str - reason, exception: Exception instance}
 
     def __init__(
         self,
@@ -138,7 +139,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         self.tags.add(self.__class__.__name__)
         # Unique Task Features
         self.uniqueType = uniqueType
-        logger.debug(f'Task created: {self.uuid} - {self.name}' + (f' (chain: {chainUuid})' if chainUuid else ''))
+        logger.debug(f'{self.__class__.__name__} Task created: {self.uuid} - {self.name}' + (f' (chain: {chainUuid})' if chainUuid else ''))
 
     serializables: Optional[Any] = None
 
@@ -230,8 +231,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         if not exception:
             exception = TaskFailedException(reason)
         self.errorException = exception
-        if not self.failSilently:
-            raise self.errorException
+        raise self.errorException
         
     def serialize(self) -> Dict[str, Any]:
         """
@@ -345,22 +345,27 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
             self.handle()
             if self.isStopped():
                 self.setStatus(TaskStatus.CANCELLED)
+                self.error = 'CANCELLED'
                 logger.info(f'Task {self.uuid} was cancelled during execution')
+            elif self.status == TaskStatus.FAILED:
+                logger.info(f'Task {self.uuid} failed silently: {self.error}', exc_info=True)
             else:
                 self.setStatus(TaskStatus.COMPLETED)
                 logger.info(f'Task {self.uuid} completed successfully')
         except TaskCancellationException as e:
-            self.error = str(e)
+            self.error = 'CANCELLED'
             self.setStatus(TaskStatus.CANCELLED)
-            logger.info(f'Task {self.uuid} was cancelled: {e}')
+            logger.info(f'Task {self.uuid} was cancelled: {e}', exc_info=True)
         except Exception as e:
-            self.error = str(e)
+            self.error = f'{e.__class__.__name__}: {e}'
             self.setStatus(TaskStatus.FAILED)
-            logger.error(f'Task {self.uuid} failed with error: {e}', exc_info=True)
+            logger.opt(exception=e).error(f'Task {self.uuid} failed with error: {e}', exc_info=True)
+            self.errorException = e
             if not self.failSilently:
                 raise
         finally:
             self.finishedAt = datetime.now()
             duration = (self.finishedAt - self.startedAt).total_seconds()
             logger.info(f'Task {self.uuid} finished in {duration:.2f}s with status {self.status.name}')
-            self.taskFinished.emit(self.uuid, self.status, self.result, self.error)
+            err: Optional[Dict[str, str|Exception]] = {'message': self.error, 'exception': self.errorException} if self.error else None
+            self.taskFinished.emit(self.uuid, self, self.result, err)

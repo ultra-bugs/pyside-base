@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional
 
 from PySide6 import QtCore
 
+from . import AbstractTask
 from ..Config import Config
 from ..Logging import logger
 from ..Observer import Publisher, Subscriber
@@ -51,17 +52,19 @@ class TaskManagerService(QtCore.QObject):
     - Manage system lifecycle and persistence
 
     Signals:
-        taskAdded: Emitted when a task is added
-        taskRemoved: Emitted when a task is removed
-        taskStatusUpdated: Emitted when task status changes
-        taskProgressUpdated: Emitted when task progress changes
-        failedTaskLogged: Emitted when a failed task is logged
+        taskAdded: Emitted when a task is added. Args: (uuid: str)
+        taskRemoved: Emitted when a task is removed. Args: (uuid: str)
+        taskFinished: Emitted when a task finished (completed/failed/cancelled). Args: (uuid: str, task: AbstractTask)
+        taskStatusUpdated: Emitted when task status changes. Args: (uuid: str, status: TaskStatus)
+        taskProgressUpdated: Emitted when task progress changes. Args: (uuid: str, progress: int)
+        failedTaskLogged: Emitted when a failed task is logged. Args: (taskInfo: dict)
         systemReady: Emitted when system initialization is complete
     """
 
     taskAdded = QtCore.Signal(str)
     taskRemoved = QtCore.Signal(str)
-    taskStatusUpdated = QtCore.Signal(str, object)
+    taskFinished = QtCore.Signal(str, object, object, object)  # uuid, task instance, result, error
+    taskStatusUpdated = QtCore.Signal(str, object)  # uuid, status (TaskStatus)
     taskProgressUpdated = QtCore.Signal(str, int)
     failedTaskLogged = QtCore.Signal(dict)
     systemReady = QtCore.Signal()
@@ -82,25 +85,26 @@ class TaskManagerService(QtCore.QObject):
         self._taskTracker = TaskTracker(self._storage)
         self._taskQueue = TaskQueue(self._taskTracker, self._storage, config)
         self._taskScheduler = TaskScheduler(self._taskQueue, self._storage)
-        self._connectSignals()
+        self._connectSubsystemSignals()
         self.loadState()
         self._applyConfig()
         logger.info('TaskManagerService initialized successfully')
         self.systemReady.emit()
 
-    def _connectSignals(self) -> None:
+    def _connectSubsystemSignals(self) -> None:
         """
         Connect signals from subsystems to aggregate signals.
         """
         self._taskTracker.taskAdded.connect(self._onTaskAdded)
         self._taskTracker.taskRemoved.connect(self._onTaskRemoved)
-        self._taskTracker.taskUpdated.connect(self._onTaskUpdated)
+        self._taskTracker.taskStatusUpdated.connect(self._onTaskUpdated)
+        self._taskTracker.taskFinished.connect(self._onTaskFinished)
         self._taskTracker.failedTaskLogged.connect(self._onFailedTaskLogged)
         self._taskQueue.queueStatusChanged.connect(self._onQueueStatusChanged)
         self._taskScheduler.jobScheduled.connect(self._onJobScheduled)
         self._taskScheduler.jobUnscheduled.connect(self._onJobUnscheduled)
         logger.debug('TaskManagerService signals connected')
-
+    
     def _applyConfig(self) -> None:
         """Apply configuration settings to subsystems."""
         maxConcurrent = self._config.get('taskSystem.maxConcurrentTasks', 3)
@@ -184,8 +188,8 @@ class TaskManagerService(QtCore.QObject):
         """
         Pause all tasks with the specified tag.
         Args:
-           tag: Tag to target
-           includeChainedChildren: If True, also pause tasks marked as _ChainedChild
+            tag: Tag to target
+            includeChainedChildren: If True, also pause tasks marked as _ChainedChild
         """
         targetUuids = self._taskTracker.getUuidsByTag(tag)
         if not includeChainedChildren:
@@ -284,6 +288,23 @@ class TaskManagerService(QtCore.QObject):
         """
         return self._taskTracker.getFailedTaskHistory()
 
+    def getTasksByTag(self, tag: str) -> List[Any]:
+        """
+        Get all active task instances matching a tag.
+        Args:
+            tag: Tag to filter by (e.g. 'SinglePayTask', 'Device_abc123')
+        Returns:
+            List of task instances
+        """
+        return self._taskTracker.getTasksByTag(tag)
+
+    def hasTasksWithTag(self, tag: str) -> bool:
+        """
+        Check if any active tasks exist with the given tag.
+        Lightweight check without serialization overhead.
+        """
+        return self._taskTracker.hasTasksWithTag(tag)
+
     def setMaxConcurrentTasks(self, count: int) -> None:
         """
         Set maximum number of concurrent tasks.
@@ -365,7 +386,7 @@ class TaskManagerService(QtCore.QObject):
         self.taskRemoved.emit(uuid)
 
     def _onTaskUpdated(self, uuid: str) -> None:
-        """Handle taskUpdated signal from TaskTracker."""
+        """Handle taskStatusUpdated signal from TaskTracker."""
         try:
             task = self._taskTracker._activeTasks.get(uuid)
             if task:
@@ -373,6 +394,11 @@ class TaskManagerService(QtCore.QObject):
                 self.taskProgressUpdated.emit(uuid, task.progress)
         except Exception as e:
             logger.warning(f'Error handling task update for {uuid}: {e}')
+
+    def _onTaskFinished(self, uuid: str, task: AbstractTask, res: Any, err: Optional[Dict[str, str|Exception]]) -> None:
+        """Handle taskFinished signal from TaskTracker."""
+        logger.debug(f'Task execution finished: {uuid}')
+        self.taskFinished.emit(uuid, task, res, err)
 
     def _onFailedTaskLogged(self, taskInfo: Dict[str, Any]) -> None:
         """Handle failedTaskLogged signal from TaskTracker."""

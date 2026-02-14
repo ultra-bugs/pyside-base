@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from PySide6 import QtCore
 
+from . import AbstractTask
 from ..Logging import logger
 from .Exceptions import TaskNotFoundException
 from .storage.BaseStorage import BaseStorage
@@ -43,7 +44,8 @@ class TaskTracker(QtCore.QObject):
 
     taskAdded = QtCore.Signal(str)
     taskRemoved = QtCore.Signal(str)
-    taskUpdated = QtCore.Signal(str)
+    taskStatusUpdated = QtCore.Signal(str, object)  # uuid, status (TaskStatus)
+    taskFinished = QtCore.Signal(str, object, object, object)  # uuid, task instance, result, error
     failedTaskLogged = QtCore.Signal(dict)
 
     def __init__(self, storage: BaseStorage):
@@ -74,7 +76,7 @@ class TaskTracker(QtCore.QObject):
             isChain = self._isTaskChain(task)
             self._activeTasks[uuid] = task
             # Connect signals for the main task
-            self._connectTaskSignals(task)
+            self._connectSingleTaskSignals(task)
             # Index tags
             self._indexTask(task)
             # Handle Chain Children
@@ -85,7 +87,7 @@ class TaskTracker(QtCore.QObject):
                     # Track child if not already tracked
                     if childUuid not in self._activeTasks:
                         self._activeTasks[childUuid] = child
-                        self._connectTaskSignals(child)
+                        self._connectSingleTaskSignals(child)
                         self._indexTask(child)
             logger.info(f'Task added: {uuid} ({task.name})')
             self.taskAdded.emit(uuid)
@@ -105,12 +107,12 @@ class TaskTracker(QtCore.QObject):
                     self._chainChildTasks.pop(c_uuid, None)
                     if c_uuid in self._activeTasks:
                         child_task = self._activeTasks.pop(c_uuid)
-                        self._disconnectTaskSignals(child_task)
+                        self._disconnectSingleTaskSignals(child_task)
                         self._unindexTask(child_task)
             # Cleanup metadata if it was a child
             self._chainChildTasks.pop(uuid, None)
             # Disconnect main task
-            self._disconnectTaskSignals(task)
+            self._disconnectSingleTaskSignals(task)
             logger.info(f'Task removed: {uuid} ({task.name})')
             self.taskRemoved.emit(uuid)
 
@@ -139,6 +141,9 @@ class TaskTracker(QtCore.QObject):
         return self._failedTaskHistory.copy()
 
     def logFailedTask(self, task: Any) -> None:
+        logger.warning(f'Failed task: {task.uuid} - {task.error}')
+        if not getattr(task, 'isPersistent', False):
+            return
         data = task.serialize()
         data['failedAt'] = datetime.now().isoformat()
         self._addToHistory(self._failedTaskHistory, data)
@@ -150,6 +155,28 @@ class TaskTracker(QtCore.QObject):
         """Get all UUIDs associated with a tag."""
         with self._lock:
             return self._tagIndex.get(tag, set()).copy()
+
+    def getTasksByTag(self, tag: str) -> List[Any]:
+        """Get all active task instances matching a tag.
+
+        Args:
+            tag: Tag to filter by (e.g. 'SinglePayTask', 'Device_abc123')
+
+        Returns:
+            List of task instances for matching active tasks
+        """
+        with self._lock:
+            uuids = self._tagIndex.get(tag, set())
+            return [self._activeTasks[uuid] for uuid in uuids if uuid in self._activeTasks]
+
+    def hasTasksWithTag(self, tag: str) -> bool:
+        """Check if any active tasks exist with the given tag.
+
+        Lightweight check without serialization overhead.
+        """
+        with self._lock:
+            uuids = self._tagIndex.get(tag, set())
+            return any(uuid in self._activeTasks for uuid in uuids)
 
     # -------------------------------------------------------------------------
     # Internal Logic & Persistence
@@ -172,16 +199,18 @@ class TaskTracker(QtCore.QObject):
                     if not self._tagIndex[tag]:
                         del self._tagIndex[tag]
 
-    def _connectTaskSignals(self, task: Any):
+    def _connectSingleTaskSignals(self, task: Any):
         """Connect task signals to internal handlers."""
         task.statusChanged.connect(self._onTaskStatusChanged)
-        task.progressUpdated.connect(self._onTaskProgressUpdated)
+        # task.progressUpdated.connect(self._onTaskProgressUpdated)
         task.taskFinished.connect(self._onTaskFinished)
 
-    def _disconnectTaskSignals(self, task: Any):
+    def _disconnectSingleTaskSignals(self, task: Any):
         """Safely disconnect signals, suppressing errors if not connected."""
+        if not task:
+            return
         self._safeDisconnect(task.statusChanged, self._onTaskStatusChanged)
-        self._safeDisconnect(task.progressUpdated, self._onTaskProgressUpdated)
+        # self._safeDisconnect(task.progressUpdated, self._onTaskProgressUpdated)
         self._safeDisconnect(task.taskFinished, self._onTaskFinished)
 
     def _safeDisconnect(self, signal, slot):
@@ -189,7 +218,7 @@ class TaskTracker(QtCore.QObject):
         try:
             signal.disconnect(slot)
         except (RuntimeError, TypeError, RuntimeWarning) as e:
-            logger.opt(exception=e).warning(str(e))
+            # logger.opt(exception=e).warning(str(e))
             # Signal was not connected or object already deleted
             pass
         except Exception as e:
@@ -197,21 +226,20 @@ class TaskTracker(QtCore.QObject):
 
     def _onTaskStatusChanged(self, uuid: str, status: TaskStatus):
         # logger.debug(f'Task {uuid} status: {status.name}') # Reduce spam
-        self.taskUpdated.emit(uuid)
+        self.taskStatusUpdated.emit(uuid, status)
 
-    def _onTaskProgressUpdated(self, uuid: str, progress: int):
-        self.taskUpdated.emit(uuid)
+    # def _onTaskProgressUpdated(self, uuid: str, progress: int):
+    #     self.taskStatusUpdated.emit(uuid, )
 
-    def _onTaskFinished(self, uuid: str, status: TaskStatus, res: Any, err: Optional[str]):
-        logger.info(f'Task finished: {uuid} [{status.name}]')
-        self.taskUpdated.emit(uuid)
-        if status == TaskStatus.COMPLETED:
-            task = self._activeTasks.get(uuid)
-            if task:
-                data = task.serialize()
-                data['completedAt'] = datetime.now().isoformat()
-                self._addToHistory(self._completedTaskHistory, data)
-                self.saveState()
+    def _onTaskFinished(self, uuid: str, task: AbstractTask, res: Any, err: Optional[Dict[str, str|Exception]]):
+        logger.info(f'Task finished: {uuid} [{task.status.name}]')
+        self.taskStatusUpdated.emit(uuid, task.status)
+        self.taskFinished.emit(uuid, task, res, err)
+        if task and task.status == TaskStatus.COMPLETED and getattr(task, 'isPersistent', False):
+            data = task.serialize()
+            data['completedAt'] = datetime.now().isoformat()
+            self._addToHistory(self._completedTaskHistory, data)
+            self.saveState()
 
     def _addToHistory(self, history_list: list, item: dict, limit: int = 1000):
         history_list.append(item)

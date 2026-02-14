@@ -28,7 +28,6 @@ from uuid import UUID
 
 import curl_cffi
 import numpy as np
-import win32process
 from box import Box
 from PySide6.QtCore import QCoreApplication, Qt, QTimer
 from PySide6.QtGui import QIcon
@@ -679,16 +678,16 @@ class PythonHelper:
             data.update(*anotherDict)
         return data
 
-    @staticmethod
-    def getEnvOfProcess(pid):
-        try:
-            import win32api
-            import win32con
-            h_process = win32api.OpenProcess(win32con.PROCESS_QUERY_INFORMATION | win32con.PROCESS_VM_READ, False, pid)
-            env_block = win32process.GetEnvironmentStrings(h_process)
-            return env_block
-        except Exception as e:
-            return f'Error: {e}'
+    # @staticmethod
+    # def getEnvOfProcess(pid):
+    #     try:
+    #         import win32api
+    #         import win32con
+    #         h_process = win32api.OpenProcess(win32con.PROCESS_QUERY_INFORMATION | win32con.PROCESS_VM_READ, False, pid)
+    #         env_block = win32process.GetEnvironmentStrings(h_process)
+    #         return env_block
+    #     except Exception as e:
+    #         return f'Error: {e}'
 
     @staticmethod
     def killProcessById(pid):
@@ -927,6 +926,19 @@ class WidgetUtils:
     def transQt(msg: str, name_space: str = None) -> str:
         name_space = name_space if name_space is not None else 'WidgetUtils'
         return QCoreApplication.translate(name_space, msg)
+
+
+class URIComponent(Enum):
+    """URI component types"""
+
+    SCHEME = auto()
+    HOST = auto()
+    PORT = auto()
+    PATH = auto()
+    QUERY = auto()
+    FRAGMENT = auto()
+    USERNAME = auto()
+    PASSWORD = auto()
 
 
 class UrlHelper:

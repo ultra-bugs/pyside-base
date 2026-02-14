@@ -166,7 +166,12 @@ class QtAppContext(QObject):
             self.appReady.emit()
             logger.info('Application Context Ready.')
             return self
-
+    
+    def getMainWindowCtl(self):
+        for widget in self._app.topLevelWidgets():
+            if type(widget).__name__ == 'MainController':
+                return widget
+        return None
     def run(self) -> int:
         """Start the Qt Event Loop."""
         if not self._isBootstrapped:

@@ -39,7 +39,11 @@ class CustomJsonEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, DictSerializable):
             return o.toDict()
-        return super().default(o)
+        # Fallback: convert non-serializable objects to repr string
+        try:
+            return super().default(o)
+        except TypeError:
+            return repr(o)
 
 logger = logger.bind(component='TaskSystem')
 

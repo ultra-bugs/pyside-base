@@ -98,8 +98,9 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC):
     # Signals
     statusChanged = QtCore.Signal(str, object)  # uuid, TaskStatus
     progressUpdated = QtCore.Signal(str, int)  # uuid, progress
-    taskFinished = QtCore.Signal(str, object, object, str)  # uuid, status, result, error
-    
+    taskFinished = QtCore.Signal(str, object, object, str)  # uuid, self instance, result, error
+    # error object: {message: str - reason, exception: Exception instance}
+
     def __init__(self, name, description = "",
                  isPersistent = False, maxRetries = 0, retryDelaySeconds = 5,
                  failSilently = False):

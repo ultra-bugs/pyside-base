@@ -182,9 +182,15 @@ class Subscriber:
                         raise TypeError(f'Could not match parameters for {method_name}. Original error: {errorMsg}')
                 else:
                     raise
+            except RuntimeError as e:
+                if "signal" in str(e).lower():
+                    from .Logging import logger
+                    logger.opt(exception=e).exception(f'RuntimeError in event handler: {self.__class__.__name__}.{method_name}')
+                    return
+                raise
             except Exception as e:
                 from .Logging import logger
                 logger.opt(exception=e).exception(f'Exception in event handler: {self.__class__.__name__}.{method_name}')
                 from .Exceptions import ExceptionHandler
                 handler = ExceptionHandler()
-                handler.HandleException(e)
+                handler.handleException(e)
