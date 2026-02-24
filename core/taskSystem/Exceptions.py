@@ -33,6 +33,7 @@ class TaskFailedException(Exception):
 
 class TaskUniqueViolationException(Exception):
     """Raised when a unique task constraint is violated."""
+
     pass
 
 

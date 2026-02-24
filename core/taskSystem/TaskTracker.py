@@ -25,8 +25,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from PySide6 import QtCore
 
-from . import AbstractTask
 from ..Logging import logger
+from . import AbstractTask
 from .Exceptions import TaskNotFoundException
 from .storage.BaseStorage import BaseStorage
 from .TaskStatus import TaskStatus
@@ -158,10 +158,8 @@ class TaskTracker(QtCore.QObject):
 
     def getTasksByTag(self, tag: str) -> List[Any]:
         """Get all active task instances matching a tag.
-
         Args:
             tag: Tag to filter by (e.g. 'SinglePayTask', 'Device_abc123')
-
         Returns:
             List of task instances for matching active tasks
         """
@@ -171,7 +169,6 @@ class TaskTracker(QtCore.QObject):
 
     def hasTasksWithTag(self, tag: str) -> bool:
         """Check if any active tasks exist with the given tag.
-
         Lightweight check without serialization overhead.
         """
         with self._lock:
@@ -217,7 +214,7 @@ class TaskTracker(QtCore.QObject):
         """Disconnect signal from slot, ignoring errors if not connected."""
         try:
             signal.disconnect(slot)
-        except (RuntimeError, TypeError, RuntimeWarning) as e:
+        except (RuntimeError, TypeError, RuntimeWarning):
             # logger.opt(exception=e).warning(str(e))
             # Signal was not connected or object already deleted
             pass
@@ -231,7 +228,7 @@ class TaskTracker(QtCore.QObject):
     # def _onTaskProgressUpdated(self, uuid: str, progress: int):
     #     self.taskStatusUpdated.emit(uuid, )
 
-    def _onTaskFinished(self, uuid: str, task: AbstractTask, res: Any, err: Optional[Dict[str, str|Exception]]):
+    def _onTaskFinished(self, uuid: str, task: AbstractTask, res: Any, err: Optional[Dict[str, str | Exception]]):
         logger.info(f'Task finished: {uuid} [{task.status.name}]')
         self.taskStatusUpdated.emit(uuid, task.status)
         self.taskFinished.emit(uuid, task, res, err)

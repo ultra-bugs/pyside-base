@@ -95,7 +95,7 @@ def generateProvider(name, description, base_path):
     if not os.path.exists(initPath):
         with open(initPath, 'w') as f:
             f.write('# Providers package\n')
-    print(f'\nNext: run "pixi run compile-providers" to update the manifest.')
+    print('\nNext: run "pixi run compile-providers" to update the manifest.')
 
 
 def main():

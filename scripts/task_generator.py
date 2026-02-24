@@ -60,12 +60,12 @@ def generate_and_update(item_type, name, description):
     # Show success message and next steps
     if item_type == 'task':
         print('\nTask created successfully!')
-        print(f'You can now use your task by importing it:')
+        print('You can now use your task by importing it:')
         print(f'  from tasks import {name}Task')
         print(f'\nTo edit your task, open: tasks/{name}Task.py')
     else:  # task_step
         print('\nTask step created successfully!')
-        print(f'You can now use your step by importing it:')
+        print('You can now use your step by importing it:')
         print(f'  from tasks.steps import {name}Step')
         print(f'\nTo edit your step, open: tasks/steps/{name}Step.py')
     return True

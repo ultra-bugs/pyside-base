@@ -16,10 +16,7 @@ import datetime
 import random
 from datetime import timedelta
 
-from app.tasks import (AdbCommandTask, ChainDemoTask, ConditionDemoTask,
-                       CpuIntensiveDemoTask, LoopDemoTask, SimpleDemoTask,
-                       SleepDemoTask)
-from core.Logging import logger
+from app.tasks import AdbCommandTask, ChainDemoTask, ConditionDemoTask, CpuIntensiveDemoTask, LoopDemoTask, SimpleDemoTask, SleepDemoTask
 from core.Observer import Subscriber
 from core.QtAppContext import QtAppContext
 

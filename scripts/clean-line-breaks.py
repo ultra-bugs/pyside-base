@@ -15,7 +15,6 @@
 #
 import ast
 import subprocess
-import sys
 from pathlib import Path
 
 
@@ -90,8 +89,8 @@ def main():
     print('Pipeline finished successfully.')
 
 
-import os
 import fnmatch
+import os
 
 # ================= CONFIGURATION =================
 TRIGGER_LINE = '#              * * * * * * * * * * * * * * * * * * * * *'

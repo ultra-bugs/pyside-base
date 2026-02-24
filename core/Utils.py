@@ -849,9 +849,8 @@ class WidgetUtils:
 
     @staticmethod
     def _createMsgBox(controller=None):
-        from PySide6.QtWidgets import QWidget
         from PySide6.QtGui import QWindow
-        
+        from PySide6.QtWidgets import QWidget
         # Ensure controller is QWidget or None
         parent = None
         if controller is not None:
@@ -862,7 +861,6 @@ class WidgetUtils:
                 parent = None
             else:
                 parent = None
-        
         msg_box = QMessageBox(parent)
         msg_box.setWindowIcon(AppHelper.getAppIcon())
         return msg_box

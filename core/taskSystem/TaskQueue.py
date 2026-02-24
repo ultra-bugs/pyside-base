@@ -95,7 +95,6 @@ class TaskQueue(QtCore.QObject):
         if task.uniqueType != UniqueType.NONE:
             key = task.uniqueVia()
             stats = self._activeUniqueKeys.get(key, {'pending': 0, 'running': 0})
-            
             if task.uniqueType == UniqueType.JOB:
                 if stats['pending'] > 0 or stats['running'] > 0:
                     logger.warning(f"UniqueJob violation: Task '{task.name}' with key '{key}' already exists (Pending: {stats['pending']}, Running: {stats['running']}). Ignoring.")
@@ -104,12 +103,10 @@ class TaskQueue(QtCore.QObject):
                 if stats['pending'] > 0:
                     logger.warning(f"UniqueUntilProcessing violation: Task '{task.name}' with key '{key}' already pending. Ignoring.")
                     return
-
             # Update Index (Add to Pending)
             if key not in self._activeUniqueKeys:
                 self._activeUniqueKeys[key] = {'pending': 0, 'running': 0}
             self._activeUniqueKeys[key]['pending'] += 1
-
         # Add to pending queue
         self._pendingTasks.append(task)
         # Add to tracker
@@ -148,28 +145,24 @@ class TaskQueue(QtCore.QObject):
         # Check if we can start more tasks
         while len(self._runningTasks) < self._maxConcurrentTasks and self._pendingTasks:
             task = self._pendingTasks.popleft()
-            
             # Update Unique Index (Remove from Pending)
             if task.uniqueType != UniqueType.NONE:
                 key = task.uniqueVia()
                 if key in self._activeUniqueKeys:
                     self._activeUniqueKeys[key]['pending'] -= 1
-            
             # Skip if task was already cancelled
             if task.status == TaskStatus.CANCELLED:
                 logger.info(f'Skipping cancelled task: {task.uuid}')
                 self._taskTracker.removeTask(task.uuid)
                 # Cleanup unique key if empty
                 if task.uniqueType != UniqueType.NONE:
-                     self._cleanupUniqueKey(task.uniqueVia())
+                    self._cleanupUniqueKey(task.uniqueVia())
                 continue
-            
             # Update Unique Index (Add to Running)
             if task.uniqueType != UniqueType.NONE:
                 key = task.uniqueVia()
                 if key in self._activeUniqueKeys:
-                     self._activeUniqueKeys[key]['running'] += 1
-
+                    self._activeUniqueKeys[key]['running'] += 1
             # Move to running
             self._runningTasks[task.uuid] = task
             # Connect to task finished signal
@@ -180,7 +173,7 @@ class TaskQueue(QtCore.QObject):
             self.taskDequeued.emit(task.uuid)
             self.queueStatusChanged.emit()
 
-    def _handleTaskCompletion(self, uuid: str, task, result: Any, error: Optional[Dict[str, str|Exception]]) -> None:
+    def _handleTaskCompletion(self, uuid: str, task, result: Any, error: Optional[Dict[str, str | Exception]]) -> None:
         """
         Handle task completion, including retry logic.
         Args:
@@ -201,14 +194,12 @@ class TaskQueue(QtCore.QObject):
             task.taskFinished.disconnect(self._handleTaskCompletion)
         except RuntimeError:
             pass
-        
         # Update Unique Index (Remove from Running)
         if task.uniqueType != UniqueType.NONE:
             key = task.uniqueVia()
             if key in self._activeUniqueKeys:
                 self._activeUniqueKeys[key]['running'] -= 1
             self._cleanupUniqueKey(key)
-
         logger.info(f'Task completed: {uuid} - Status: {finalStatus.name}')
         # Handle retry logic for failed tasks (skip if cancelled)
         if finalStatus == TaskStatus.FAILED and task.isStopped() is False and task.currentRetryAttempts < task.maxRetries:
@@ -236,11 +227,11 @@ class TaskQueue(QtCore.QObject):
         self._processQueue()
 
     def _retryTask(self, task: Any) -> None:
-        '''
+        """
         Re-enqueue a failed task for retry.
         Args:
             task: Task to retry
-        '''
+        """
         # Guard: skip retry if task was cancelled while waiting for retry timer
         if task.isStopped() or task.status == TaskStatus.CANCELLED:
             logger.info(f'Skipping retry for cancelled task: {task.uuid} - {task.name}')
@@ -263,10 +254,10 @@ class TaskQueue(QtCore.QObject):
         self._processQueue()
 
     def loadState(self) -> None:
-        '''
+        """
         Load pending tasks from storage and re-enqueue them.
         Only tasks serialized as persistent are restored.
-        '''
+        """
         try:
             tasksData = self._storage.load('pendingTasks', [])
             if not tasksData:
@@ -334,4 +325,3 @@ class TaskQueue(QtCore.QObject):
             stats = self._activeUniqueKeys[key]
             if stats['pending'] <= 0 and stats['running'] <= 0:
                 del self._activeUniqueKeys[key]
-

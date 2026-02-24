@@ -5,6 +5,7 @@ class UniqueType(Enum):
     """
     Defines the uniqueness constraints for a Task.
     """
+
     NONE = auto()
     """No uniqueness constraint."""
 

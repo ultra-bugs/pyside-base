@@ -183,7 +183,7 @@ class Subscriber:
                 else:
                     raise
             except RuntimeError as e:
-                if "signal" in str(e).lower():
+                if 'signal' in str(e).lower():
                     from .Logging import logger
                     logger.opt(exception=e).exception(f'RuntimeError in event handler: {self.__class__.__name__}.{method_name}')
                     return

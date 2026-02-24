@@ -208,7 +208,7 @@ class TaskChain(AbstractTask, Subscriber):
                     return True
                 if task.status == TaskStatus.CANCELLED or self.isStopped():
                     return False
-            except TaskFailedException as e:
+            except TaskFailedException:
                 logger.error(f"TaskChain {self.uuid}: Sub-task '{task.name}' crashed with exception.", exc_info=True)
             except Exception as e:
                 task.fail(str(e))

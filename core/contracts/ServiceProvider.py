@@ -13,7 +13,7 @@
 #                  * * * * * * * * * * * * * * * * * * * * *
 
 from abc import ABC, abstractmethod
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     from core.QtAppContext import QtAppContext
@@ -59,7 +59,6 @@ class ServiceProvider(ABC):
     @abstractmethod
     def register(self):
         """Register services into ``self.ctx``.
-
         Called on the **main thread** during bootstrap.
         Use ``self.ctx.registerService(name, instance)`` here.
         """
@@ -67,7 +66,6 @@ class ServiceProvider(ABC):
 
     def boot(self):
         """Optional post-registration hook.
-
         Called after **all** providers have completed ``register()``.
         Use this when you need to wire services that depend on other
         providers already being registered.

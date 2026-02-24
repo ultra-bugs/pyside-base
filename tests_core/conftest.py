@@ -291,7 +291,6 @@ def caplog_loguru(caplog):
     Fixture to propagate loguru logs to the standard logging module so caplog can capture them.
     """
     import logging
-
     from loguru import logger
     class PropagateHandler(logging.Handler):
         def emit(self, record):

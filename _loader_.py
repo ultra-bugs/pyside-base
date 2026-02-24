@@ -11,9 +11,9 @@
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-
 import sys
 from pathlib import Path
+
 # CRITICAL: Setup sys.path BEFORE any app imports
 _PACKAGES_TO_LOADS = []
 projectRoot = Path(__file__).parent

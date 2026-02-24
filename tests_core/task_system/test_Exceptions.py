@@ -17,10 +17,7 @@ Tests for TaskSystem exceptions.
 #                  * * * * * * * * * * * * * * * * * * * * *
 
 #
-from core.taskSystem.Exceptions import (InvalidTaskStateException,
-                                        TaskCancellationException,
-                                        TaskNotFoundException,
-                                        TaskSystemException)
+from core.taskSystem.Exceptions import InvalidTaskStateException, TaskCancellationException, TaskNotFoundException, TaskSystemException
 
 
 def test_task_system_exception():

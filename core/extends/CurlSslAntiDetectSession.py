@@ -38,8 +38,6 @@ import random
 import threading
 from typing import Any, Dict, List, Optional
 
-import requests as original_requests
-from curl_cffi import requests as curl_requests
 from curl_cffi.requests import Session as CurlSession
 
 from core.Logging import logger

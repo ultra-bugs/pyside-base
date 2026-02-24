@@ -20,8 +20,7 @@ Contains AbstractTask subclasses used by UI handlers/controllers.
 """
 
 from .AdbCommandTask import AdbCommandTask
-from .ChainDemoTask import (ChainDemoTask, DataGeneratorTask,
-                            DataProcessorTask, FlakyTask)
+from .ChainDemoTask import ChainDemoTask, DataGeneratorTask, DataProcessorTask, FlakyTask
 from .ConditionDemoTask import ConditionDemoTask
 from .CpuIntensiveDemoTask import CpuIntensiveDemoTask
 from .LoopDemoTask import LoopDemoTask

@@ -1,14 +1,13 @@
-'''
+"""
 Tests for TaskQueue.loadState() implementation.
 Verifies pending task restoration from storage.
-'''
+"""
 
 from unittest.mock import MagicMock
 
 import pytest
 
 from core.taskSystem.TaskQueue import TaskQueue
-from core.taskSystem.TaskStatus import TaskStatus
 from core.taskSystem.TaskTracker import TaskTracker
 from tests_core.task_system.test_AbstractTask import ConcreteTask
 
@@ -36,24 +35,18 @@ def taskQueue(taskTracker, mockStorage, mock_config):
 
 
 def _makeTaskData(name='Restored Task', className=_CONCRETE_TASK_CLASS):
-    return {
-        'className': className,
-        'name': name,
-        'uuid': 'test-uuid-1234',
-        'status': 'PENDING',
-        'isPersistent': True,
-    }
+    return {'className': className, 'name': name, 'uuid': 'test-uuid-1234', 'status': 'PENDING', 'isPersistent': True}
 
 
 def test_loadStateEmpty(taskQueue, mockStorage):
-    '''loadState() with no saved tasks does nothing gracefully.'''
+    """loadState() with no saved tasks does nothing gracefully."""
     mockStorage.load.return_value = []
     taskQueue.loadState()
     assert len(taskQueue._pendingTasks) == 0 or taskQueue.getPendingCount() == 0
 
 
 def test_loadStateRestoresTasks(taskQueue, mockStorage, qtbot):
-    '''loadState() restores serialized pending tasks into queue.'''
+    """loadState() restores serialized pending tasks into queue."""
     mockStorage.load.return_value = [_makeTaskData('Task A'), _makeTaskData('Task B')]
     taskQueue.loadState()
     # Tasks should be queued or already running
@@ -65,7 +58,7 @@ def test_loadStateRestoresTasks(taskQueue, mockStorage, qtbot):
 
 
 def test_loadStateSkipsMissingClassName(taskQueue, mockStorage, caplog_loguru):
-    '''loadState() skips entries with no className, logs warning.'''
+    """loadState() skips entries with no className, logs warning."""
     import logging
     mockStorage.load.return_value = [{'name': 'NoClass', 'isPersistent': True}]
     with caplog_loguru.at_level(logging.WARNING):
@@ -74,7 +67,7 @@ def test_loadStateSkipsMissingClassName(taskQueue, mockStorage, caplog_loguru):
 
 
 def test_loadStateHandlesDeserializationError(taskQueue, mockStorage, caplog_loguru):
-    '''loadState() handles corrupted task data gracefully without crashing.'''
+    """loadState() handles corrupted task data gracefully without crashing."""
     import logging
     mockStorage.load.return_value = [{'className': 'nonexistent.module.BadTask', 'name': 'Bad'}]
     with caplog_loguru.at_level(logging.ERROR):
@@ -83,15 +76,13 @@ def test_loadStateHandlesDeserializationError(taskQueue, mockStorage, caplog_log
 
 
 def test_loadStateRoundTrip(taskQueue, mockStorage):
-    '''saveState followed by loadState restores the same tasks.'''
+    """saveState followed by loadState restores the same tasks."""
     # Add a persistent task to pending
     task = ConcreteTask(name='RoundTrip', isPersistent=True)
     serialized = task.serialize()
     serialized['className'] = _CONCRETE_TASK_CLASS
-
     # Simulate saveState persisting it
     mockStorage.load.return_value = [serialized]
-
     initialRunning = taskQueue.getRunningCount()
     taskQueue.loadState()
     # Task was loaded — either pending or running

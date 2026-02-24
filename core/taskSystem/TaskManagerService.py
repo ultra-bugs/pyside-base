@@ -24,10 +24,10 @@ from typing import Any, Dict, List, Optional
 
 from PySide6 import QtCore
 
-from . import AbstractTask
 from ..Config import Config
 from ..Logging import logger
 from ..Observer import Publisher, Subscriber
+from . import AbstractTask
 from .ChainRetryBehavior import ChainRetryBehavior
 from .Exceptions import TaskNotFoundException
 from .storage import BaseStorage
@@ -104,7 +104,7 @@ class TaskManagerService(QtCore.QObject):
         self._taskScheduler.jobScheduled.connect(self._onJobScheduled)
         self._taskScheduler.jobUnscheduled.connect(self._onJobUnscheduled)
         logger.debug('TaskManagerService signals connected')
-    
+
     def _applyConfig(self) -> None:
         """Apply configuration settings to subsystems."""
         maxConcurrent = self._config.get('taskSystem.maxConcurrentTasks', 3)
@@ -223,14 +223,14 @@ class TaskManagerService(QtCore.QObject):
             raise
 
     def pauseTask(self, uuid: str) -> None:
-        '''
+        """
         Pause a running task.
         The task thread will block at its next checkPaused() call.
         Args:
             uuid: Task UUID
         Raises:
             TaskNotFoundException: If task is not found
-        '''
+        """
         try:
             task = self._taskTracker._activeTasks.get(uuid)
             if not task:
@@ -244,13 +244,13 @@ class TaskManagerService(QtCore.QObject):
             raise
 
     def resumeTask(self, uuid: str) -> None:
-        '''
+        """
         Resume a paused task.
         Args:
             uuid: Task UUID
         Raises:
             TaskNotFoundException: If task is not found
-        '''
+        """
         try:
             task = self._taskTracker._activeTasks.get(uuid)
             if not task:
@@ -399,7 +399,7 @@ class TaskManagerService(QtCore.QObject):
         except Exception as e:
             logger.warning(f'Error handling task update for {uuid}: {e}')
 
-    def _onTaskFinished(self, uuid: str, task: AbstractTask, res: Any, err: Optional[Dict[str, str|Exception]]) -> None:
+    def _onTaskFinished(self, uuid: str, task: AbstractTask, res: Any, err: Optional[Dict[str, str | Exception]]) -> None:
         """Handle taskFinished signal from TaskTracker."""
         logger.debug(f'Task execution finished: {uuid}')
         self.taskFinished.emit(uuid, task, res, err)

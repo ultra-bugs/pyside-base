@@ -1,13 +1,11 @@
-'''
+"""
 Tests for auto-retry bug fixes in TaskQueue.
 Verifies: signal fired once per attempt, setStatus emits signal, no duplicate tracking.
 
 Note: Integration tests involving QTimer.singleShot + QThreadPool are marked skip
 due to known access violation during Qt test teardown (same issue as test_task_retry_logic).
 Logic is verified at unit level instead.
-'''
-
-from unittest.mock import MagicMock, patch
+"""
 
 import pytest
 
@@ -29,7 +27,7 @@ def taskQueue(taskTracker, mock_config):
 
 
 class FailThenSucceedTask(ConcreteTask):
-    '''Fails failCount times then succeeds.'''
+    """Fails failCount times then succeeds."""
 
     def __init__(self, *args, failCount=1, **kwargs):
         super().__init__(*args, **kwargs)
@@ -49,8 +47,9 @@ class FailThenSucceedTask(ConcreteTask):
 
 # ─── Unit tests (no QTimer/thread teardown risk) ──────────────────────────────
 
+
 def test_setStatusCalledOnRetry():
-    '''_retryTask uses setStatus() instead of direct assignment — signal is emitted.'''
+    """_retryTask uses setStatus() instead of direct assignment — signal is emitted."""
     task = ConcreteTask(name='RetrySignalTask', maxRetries=2)
     task.setStatus(TaskStatus.FAILED)
     signals = []
@@ -61,7 +60,7 @@ def test_setStatusCalledOnRetry():
 
 
 def test_retryTaskDoesNotDoubleAddToTracker(taskQueue, taskTracker):
-    '''_retryTask enqueues directly to _pendingTasks, not via addTask — no double tracker add.'''
+    """_retryTask enqueues directly to _pendingTasks, not via addTask — no double tracker add."""
     task = ConcreteTask(name='NoDoubleTrack')
     # Simulate task already in tracker (as it would be after first run)
     taskTracker.addTask(task)
@@ -75,12 +74,11 @@ def test_retryTaskDoesNotDoubleAddToTracker(taskQueue, taskTracker):
 
 
 def test_signalDisconnectedAfterPop(taskQueue):
-    '''taskFinished is disconnected from _handleTaskCompletion when task is popped from running.'''
+    """taskFinished is disconnected from _handleTaskCompletion when task is popped from running."""
     task = ConcreteTask(name='DisconnectTask')
     task.setStatus(TaskStatus.RUNNING)
     taskQueue._runningTasks[task.uuid] = task
     task.taskFinished.connect(taskQueue._handleTaskCompletion)
-
     # Simulate pop + disconnect (as done in _handleTaskCompletion)
     taskQueue._runningTasks.pop(task.uuid)
     try:
@@ -88,13 +86,12 @@ def test_signalDisconnectedAfterPop(taskQueue):
         disconnected = True
     except RuntimeError:
         disconnected = False
-
     # Should disconnect cleanly (was connected once)
     assert disconnected
 
 
 def test_noRetryWhenMaxZero(taskQueue, qtbot):
-    '''Task with maxRetries=0 fails permanently without scheduling retry.'''
+    """Task with maxRetries=0 fails permanently without scheduling retry."""
     task = FailThenSucceedTask(name='NoRetry', maxRetries=0, failCount=99)
     with qtbot.waitSignal(taskQueue.queueStatusChanged, timeout=5000):
         taskQueue.addTask(task)
@@ -104,7 +101,7 @@ def test_noRetryWhenMaxZero(taskQueue, qtbot):
 
 
 def test_retryCountIncrements(taskQueue, qtbot):
-    '''currentRetryAttempts increments correctly on failure.'''
+    """currentRetryAttempts increments correctly on failure."""
     task = FailThenSucceedTask(name='CountTask', maxRetries=2, retryDelaySeconds=60, failCount=1)
     with qtbot.waitSignal(taskQueue.queueStatusChanged, timeout=5000):
         taskQueue.addTask(task)
@@ -116,7 +113,7 @@ def test_retryCountIncrements(taskQueue, qtbot):
 
 @pytest.mark.skip(reason='QTimer.singleShot + QThreadPool causes access violation on test teardown')
 def test_retryThenSuccess(taskQueue, qtbot):
-    '''Task fails twice, succeeds on third. Skipped: known Qt teardown issue.'''
+    """Task fails twice, succeeds on third. Skipped: known Qt teardown issue."""
     task = FailThenSucceedTask(name='RetryTask', maxRetries=2, retryDelaySeconds=1, failCount=2)
     taskQueue.addTask(task)
     qtbot.waitUntil(lambda: task.status == TaskStatus.COMPLETED, timeout=10000)
@@ -125,5 +122,5 @@ def test_retryThenSuccess(taskQueue, qtbot):
 
 @pytest.mark.skip(reason='QTimer.singleShot + QThreadPool causes access violation on test teardown')
 def test_cancelDuringRetryWait(taskQueue, qtbot):
-    '''Cancel while waiting for retry — skipped: known Qt teardown issue.'''
+    """Cancel while waiting for retry — skipped: known Qt teardown issue."""
     pass

@@ -22,13 +22,13 @@ Stores data in a JSON file separate from the main application config.
 import json
 import os
 from threading import Lock
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from core.Logging import logger
+from core.model.DictSerializable import DictSerializable
 from core.Utils import PathHelper
 
 from .BaseStorage import BaseStorage
-from core.model.DictSerializable import DictSerializable
 
 
 class CustomJsonEncoder(json.JSONEncoder):
@@ -44,6 +44,7 @@ class CustomJsonEncoder(json.JSONEncoder):
             return super().default(o)
         except TypeError:
             return repr(o)
+
 
 logger = logger.bind(component='TaskSystem')
 

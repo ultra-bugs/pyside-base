@@ -17,7 +17,6 @@ Tests for ChainRetryBehavior enum.
 #                  * * * * * * * * * * * * * * * * * * * * *
 
 #
-import pytest
 
 from core.taskSystem.ChainRetryBehavior import ChainRetryBehavior
 

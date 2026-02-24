@@ -21,11 +21,10 @@ This task creates a chain of sub-tasks that share data via ChainContext.
 
 import random
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from core.Logging import logger
-from core.taskSystem import (AbstractTask, ChainRetryBehavior, TaskChain,
-                             TaskStatus)
+from core.taskSystem import AbstractTask, ChainRetryBehavior, TaskChain
 
 logger = logger.bind(component='TaskSystem')
 

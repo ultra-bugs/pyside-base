@@ -25,7 +25,6 @@ from typing import Any, Dict, List, Optional
 
 from PySide6 import QtCore
 
-from ..Config import Config
 from ..Logging import logger
 from .storage.BaseStorage import BaseStorage
 
@@ -37,8 +36,19 @@ class ScheduledJob:
     Represents a scheduled job with its timer and metadata.
     """
 
-    def __init__(self, jobId: str, taskUuid: str, taskClass: str, taskData: Dict[str, Any], trigger: str, timer: QtCore.QTimer, nextRun: Optional[datetime] = None,
-                 intervalSeconds: Optional[int] = None, cronHour: Optional[int] = None, cronMinute: Optional[int] = None):
+    def __init__(
+        self,
+        jobId: str,
+        taskUuid: str,
+        taskClass: str,
+        taskData: Dict[str, Any],
+        trigger: str,
+        timer: QtCore.QTimer,
+        nextRun: Optional[datetime] = None,
+        intervalSeconds: Optional[int] = None,
+        cronHour: Optional[int] = None,
+        cronMinute: Optional[int] = None,
+    ):
         self.jobId = jobId
         self.taskUuid = taskUuid
         self.taskClass = taskClass
@@ -176,8 +186,9 @@ class TaskScheduler(QtCore.QObject):
         else:
             raise ValueError(f'Unknown trigger type: {trigger}')
         timer.timeout.connect(lambda: self._executeScheduledTask(jobId, taskUuid, taskClass, taskData, trigger, **kwargs))
-        job = ScheduledJob(jobId, taskUuid, taskClass, taskData, trigger, timer, nextRun,
-                           intervalSeconds=intervalSeconds, cronHour=kwargs.get('hour'), cronMinute=kwargs.get('minute'))
+        job = ScheduledJob(
+            jobId, taskUuid, taskClass, taskData, trigger, timer, nextRun, intervalSeconds=intervalSeconds, cronHour=kwargs.get('hour'), cronMinute=kwargs.get('minute')
+        )
         self._jobs[jobId] = job
         timer.start()
         self._saveJobs()
@@ -319,7 +330,6 @@ class TaskScheduler(QtCore.QObject):
                     taskData = jobData['taskData']
                     trigger = jobData['trigger']
                     nextRunStr = jobData.get('nextRun')
-
                     # Verify task class can be deserialized
                     moduleName, className = taskClass.rsplit('.', 1)
                     module = __import__(moduleName, fromlist=[className])
@@ -328,14 +338,12 @@ class TaskScheduler(QtCore.QObject):
                         raise TypeError(f'Task class {taskClass} has no deserialize method')
                     # Dry-run deserialize to verify data integrity
                     taskCls.deserialize(taskData)
-
                     now = datetime.now()
                     timer = QtCore.QTimer(self)
                     nextRun = datetime.fromisoformat(nextRunStr) if nextRunStr else None
                     intervalSeconds = jobData.get('intervalSeconds')
                     cronHour = jobData.get('cronHour')
                     cronMinute = jobData.get('cronMinute', 0)
-
                     if trigger == 'date':
                         if not nextRun or nextRun <= now:
                             logger.info(f'Skipping past one-time job {jobId} (was scheduled for {nextRun})')
@@ -344,7 +352,6 @@ class TaskScheduler(QtCore.QObject):
                         delayMs = int((nextRun - now).total_seconds() * 1000)
                         timer.setSingleShot(True)
                         timer.setInterval(delayMs)
-
                     elif trigger == 'interval':
                         if not intervalSeconds:
                             # Backward compat: infer from nextRun - createdAt
@@ -371,7 +378,6 @@ class TaskScheduler(QtCore.QObject):
                         # First tick uses singleShot delay, _executeScheduledTask switches to repeating
                         timer.setSingleShot(True)
                         timer.setInterval(delayMs)
-
                     elif trigger == 'cron':
                         if cronHour is None:
                             logger.warning(f'Job {jobId} missing cronHour, skipping')
@@ -383,12 +389,10 @@ class TaskScheduler(QtCore.QObject):
                         delayMs = int((nextRun - now).total_seconds() * 1000)
                         timer.setSingleShot(True)
                         timer.setInterval(delayMs)
-
                     else:
                         logger.warning(f'Unknown trigger type {trigger} for job {jobId}, skipping')
                         skipped += 1
                         continue
-
                     # Build kwargs for _executeScheduledTask
                     execKwargs = {}
                     if trigger == 'interval' and intervalSeconds:
@@ -396,18 +400,15 @@ class TaskScheduler(QtCore.QObject):
                     if trigger == 'cron':
                         execKwargs['hour'] = cronHour
                         execKwargs['minute'] = cronMinute
-
                     # Connect timer to executor with captured kwargs
-                    timer.timeout.connect(lambda jid=jobId, tuuid=taskUuid, tc=taskClass, td=taskData, tr=trigger, ek=execKwargs:
-                                          self._executeScheduledTask(jid, tuuid, tc, td, tr, **ek))
-
-                    job = ScheduledJob(jobId, taskUuid, taskClass, taskData, trigger, timer, nextRun,
-                                       intervalSeconds=intervalSeconds, cronHour=cronHour, cronMinute=cronMinute)
+                    timer.timeout.connect(
+                        lambda jid=jobId, tuuid=taskUuid, tc=taskClass, td=taskData, tr=trigger, ek=execKwargs: self._executeScheduledTask(jid, tuuid, tc, td, tr, **ek)
+                    )
+                    job = ScheduledJob(jobId, taskUuid, taskClass, taskData, trigger, timer, nextRun, intervalSeconds=intervalSeconds, cronHour=cronHour, cronMinute=cronMinute)
                     self._jobs[jobId] = job
                     timer.start()
                     loaded += 1
                     logger.info(f'Restored job {jobId}: trigger={trigger}, nextRun={nextRun}')
-
                 except Exception as e:
                     logger.opt(exception=e).error(f'Failed to load job {jobData.get("jobId", "unknown")}: {e}')
                     raise  # Raise so caller knows deserialization failed

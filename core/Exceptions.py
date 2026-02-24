@@ -15,7 +15,6 @@
 from typing import Type
 
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QApplication
 
 
@@ -92,10 +91,9 @@ class ExceptionHandler:
 
     def _default_handler(self, e: Exception):
         """Default exception handler"""
+        from PySide6.QtCore import QThread, QTimer
         from .Logging import logger
         from .Utils import WidgetUtils
-        from PySide6.QtCore import QTimer, QThread
-        
         # Log the exception first
         if isinstance(e, AppException):
             logger.exception('App exception')
@@ -107,13 +105,11 @@ class ExceptionHandler:
             logger.opt(exception=e).error(str(e))
             error_msg = str(e)
             error_title = 'Unhandled Error'
-        
         # Show messageBox only if we have a QApplication instance
         try:
             app = QApplication.instance()
             if app is None:
                 return True
-                
             # Determine parent widget
             try:
                 parentWidget = app.centralWidget() if hasattr(app, 'centralWidget') else None
@@ -121,7 +117,6 @@ class ExceptionHandler:
                     parentWidget = app.allWindows()[-1]
             except (AttributeError, IndexError):
                 parentWidget = None
-            
             # Check if we're on main thread
             if QThread.currentThread() == app.thread():
                 # We're on main thread, show directly
@@ -130,7 +125,6 @@ class ExceptionHandler:
                 # We're on worker thread, use QTimer to invoke on main thread
                 # QTimer.singleShot with 0 delay schedules execution on main thread's event loop
                 QTimer.singleShot(0, lambda: WidgetUtils.showErrorMsgBox(parentWidget, error_msg, error_title))
-            
             return True
         except Exception as show_error:
             logger.error(f'Failed to show error dialog: {show_error}')

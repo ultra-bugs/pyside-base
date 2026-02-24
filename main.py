@@ -15,8 +15,10 @@
 import os
 import sys
 from pathlib import Path
+
 if os.getenv('PYTHONUNBUFFERED', False) == '1':
-    from core.extends.pycharm_pydevd_qasync_fix_patch import patch_qasync_for_pycharm_debugger
+    from core.extends.pycharm_pydevd_qasync_fix_patch import \
+        patch_qasync_for_pycharm_debugger
     patch_qasync_for_pycharm_debugger()
 # noinspection PyUnusedImports
 from _loader_ import *

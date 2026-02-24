@@ -81,7 +81,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
 
     statusChanged = QtCore.Signal(str, object)
     progressUpdated = QtCore.Signal(str, int)
-    taskFinished = QtCore.Signal(str, object, object, object) # uuid, self instance, result, error|None
+    taskFinished = QtCore.Signal(str, object, object, object)  # uuid, self instance, result, error|None
     # error object: {message: str - reason, exception: Exception instance}
 
     def __init__(
@@ -194,10 +194,10 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         return tag in self.tags
 
     def pause(self) -> None:
-        '''
+        """
         Request task pause. Thread will block at next checkPaused() call.
         Only effective if handle() calls checkPaused() periodically.
-        '''
+        """
         self._pauseMutex.lock()
         self._isPaused = True
         self._pauseMutex.unlock()
@@ -205,7 +205,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         logger.info(f'Task {self.uuid} paused')
 
     def resume(self) -> None:
-        '''Resume a paused task. Wakes the blocked thread.'''
+        """Resume a paused task. Wakes the blocked thread."""
         self._pauseMutex.lock()
         self._isPaused = False
         self._pauseCondition.wakeAll()
@@ -214,11 +214,11 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         logger.info(f'Task {self.uuid} resumed')
 
     def checkPaused(self) -> None:
-        '''
+        """
         Call periodically inside handle() to respect pause requests.
         Blocks the executing thread until resume() or cancel() is called.
         No-op if task is not paused.
-        '''
+        """
         self._pauseMutex.lock()
         while self._isPaused and not self.isStopped():
             self._pauseCondition.wait(self._pauseMutex, self._pauseCheckIntervalMs)
@@ -247,11 +247,11 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         return stopped
 
     def cancel(self) -> None:
-        '''
+        """
         Request task cancellation.
         Sets the stop event and wakes any paused thread so it can exit.
         If task is PENDING or PAUSED, immediately transitions to CANCELLED.
-        '''
+        """
         logger.info(f'Cancelling task {self.uuid} - {self.name}')
         self._stopMutex.lock()
         self._stopped = True
@@ -282,7 +282,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
             exception = TaskFailedException(reason)
         self.errorException = exception
         raise self.errorException
-        
+
     def serialize(self) -> Dict[str, Any]:
         """
         Serialize task to dictionary for persistence.
@@ -417,5 +417,5 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
             self.finishedAt = datetime.now()
             duration = (self.finishedAt - self.startedAt).total_seconds()
             logger.info(f'Task {self.uuid} finished in {duration:.2f}s with status {self.status.name}')
-            err: Optional[Dict[str, str|Exception]] = {'message': self.error, 'exception': self.errorException} if self.error else None
+            err: Optional[Dict[str, str | Exception]] = {'message': self.error, 'exception': self.errorException} if self.error else None
             self.taskFinished.emit(self.uuid, self, self.result, err)

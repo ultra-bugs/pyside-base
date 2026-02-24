@@ -30,7 +30,6 @@ ruff = ">=0.14.14, <0.15"
 isort = ">=7.0.0,<8"
 
 [feature.tests.pypi-dependencies]
-ruff = ">=0.14.14, <0.15"
 pytest = ">=9.0.2, <10"
 mypy = ">=1.19.1, <2"
 pytest-qt = ">=4.5.0, <5"
@@ -72,10 +71,12 @@ lint = "ruff check ."
 lint-fix = "ruff check . --fix"
 format = "ruff format ."
 format-check = "ruff format --check ."
-sort = "isort --git-ignore ."
-sort-check = "isort . -c --git-ignore"
+sort = "isort  . --gitignore --py 313 --conda-env .pixi/envs/default"
+sort-check = "isort . -c --gitignore --py 313 --conda-env .pixi/envs/default"
 type-check = "mypy ."
+eol-minimize="python scripts/clean-line-breaks.py"
 check = { depends-on = ["lint", "type-check", "sort-check"] }
+fix = { depends-on = ["format", "sort", "eol-minimize"] }
 
 # Utilities
 check-pixi = "python -c \"import sys,platform; print('Pixi OK'); print('Python:', sys.version); print('Platform:', platform.platform())\""
