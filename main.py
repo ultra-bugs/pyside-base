@@ -13,9 +13,6 @@
 #                  * * * * * * * * * * * * * * * * * * * * *
 
 import os
-import sys
-from pathlib import Path
-
 if os.getenv('PYTHONUNBUFFERED', False) == '1':
     from core.extends.pycharm_pydevd_qasync_fix_patch import \
         patch_qasync_for_pycharm_debugger
@@ -23,6 +20,7 @@ if os.getenv('PYTHONUNBUFFERED', False) == '1':
 # noinspection PyUnusedImports
 from _loader_ import *
 from core.QtAppContext import QtAppContext
+from app.windows.main.MainController import MainController
 
 
 def main():
@@ -35,8 +33,11 @@ def main():
         mainController.show()
         exitCode = ctx.run()
         sys.exit(exitCode)
-    except Exception:
+    except Exception as e:
+        from core.Logging import logger
         logger.exception('Application failed to start')
+        from core.Utils import WidgetUtils
+        WidgetUtils.showAlertMsgBox(None, 'Application failed to start', f'Exception: {e.__class__.__name__}::{e}')
         raise
 
 
