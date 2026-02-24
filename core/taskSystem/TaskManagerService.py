@@ -223,38 +223,42 @@ class TaskManagerService(QtCore.QObject):
             raise
 
     def pauseTask(self, uuid: str) -> None:
-        """
-        Pause a task (if supported).
+        '''
+        Pause a running task.
+        The task thread will block at its next checkPaused() call.
         Args:
             uuid: Task UUID
-        Note: Currently not fully implemented - requires task-specific pause logic
-        """
+        Raises:
+            TaskNotFoundException: If task is not found
+        '''
         try:
             task = self._taskTracker._activeTasks.get(uuid)
-            if task:
-                logger.info(f'Pausing task: {uuid}')
-                task.setStatus(TaskStatus.PAUSED)
-            else:
+            if not task:
                 raise TaskNotFoundException(uuid)
+            if task.status != TaskStatus.RUNNING:
+                logger.warning(f'Cannot pause task {uuid}: not RUNNING (status={task.status.name})')
+                return
+            task.pause()
         except TaskNotFoundException:
             logger.error(f'Cannot pause task {uuid}: not found')
             raise
 
     def resumeTask(self, uuid: str) -> None:
-        """
+        '''
         Resume a paused task.
         Args:
             uuid: Task UUID
-        Note: Currently not fully implemented - requires task-specific resume logic
-        """
+        Raises:
+            TaskNotFoundException: If task is not found
+        '''
         try:
             task = self._taskTracker._activeTasks.get(uuid)
-            if task:
-                logger.info(f'Resuming task: {uuid}')
-                task.setStatus(TaskStatus.PENDING)
-                self._taskQueue.addTask(task)
-            else:
+            if not task:
                 raise TaskNotFoundException(uuid)
+            if task.status != TaskStatus.PAUSED:
+                logger.warning(f'Cannot resume task {uuid}: not PAUSED (status={task.status.name})')
+                return
+            task.resume()
         except TaskNotFoundException:
             logger.error(f'Cannot resume task {uuid}: not found')
             raise

@@ -1,6 +1,6 @@
 [project]
-name = "base-new"
-version = "0.1.0"
+name = "pyside-base"
+version = "2026.2.0.0"
 description = "Add your description here"
 requires-python = ">=3.13"
 dependencies = []

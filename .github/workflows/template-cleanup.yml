@@ -45,7 +45,7 @@ jobs:
           
           echo "# ${REPO_URL}" > README.md
           echo "" >> README.md
-          echo "[![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org/)" >> README.md
+          echo "[![Python](https://img.shields.io/badge/Python-3.13%2B-blue)](https://www.python.org/)" >> README.md
           echo "[![Qt](https://img.shields.io/badge/Qt-PySide6-green)](https://doc.qt.io/qtforpython/)" >> README.md
           echo "[![Generated from template](https://img.shields.io/badge/Generated%20from-template-008080?style=flat&logo=github&labelColor=8A2BE2)](https://github.com/ultra-bugs/pyside-base)" >> README.md
           echo "" >> README.md

@@ -1,7 +1,7 @@
 {
   "app": {
-    "name": "Base Qt Application",
-    "version": "1.0.0",
+    "name": "UltraBugz Pyside Base",
+    "version": "2026.2.0.0",
     "debug": false
   },
   "ui": {
@@ -14,6 +14,7 @@
     "file": "app.log"
   },
   "consolelog": {
+    "enabled": false,
     "level": "DEBUG",
     "enable": true
   }

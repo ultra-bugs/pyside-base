@@ -69,6 +69,7 @@ class QtAppContext(QObject):
         super().__init__()
         self._app: Union[QApplication, QCoreApplication] = QApplication.instance() or QApplication(sys.argv)
         self._isBootstrapped = False
+        self.loop = None  # qasync QEventLoop, set during bootstrap()
         self._bootstrapLock = QMutex()
         self._sharedState: dict[str, Any] = {}
         self._stateLock = QMutex()
@@ -135,8 +136,8 @@ class QtAppContext(QObject):
             import asyncio
 
             from qasync import QEventLoop
-            qEvLoop = QEventLoop(self._app)
-            asyncio.set_event_loop(qEvLoop)
+            self.loop = QEventLoop(self._app)
+            asyncio.set_event_loop(self.loop)
             self._config = Config()
             self.registerService('config', self._config)
             self._publisher = Publisher.instance()
@@ -162,21 +163,123 @@ class QtAppContext(QObject):
                 logger.warning('Feature [Tasks]: DISABLED (via PSA_ENABLE_TASKS)')
             self._setupTheme()._setupAppNameIcon()
             self._isBootstrapped = True
+            self._loadAppProviders()
             self._publisher.notify('app.ready')
             self.appReady.emit()
             logger.info('Application Context Ready.')
             return self
-    
-    def getMainWindowCtl(self):
+
+    def _loadAppProviders(self) -> Self:
+        """Load and execute app ServiceProviders from build-time manifest."""
+        try:
+            from app.providers._provider_manifest import PROVIDERS
+        except ImportError:
+            logger.debug('No _provider_manifest.py found — skipping app providers.')
+            return
+        if not PROVIDERS:
+            return
+
+        import importlib
+        from core.contracts.ServiceProvider import ServiceProvider
+        from core.Utils import WidgetUtils
+
+        # --- Phase 0: Import and instantiate ---
+        providerInstances = {}  # className -> instance
+        providerClasses = {}    # className -> class
+        for fqn in PROVIDERS:
+            modulePath, className = fqn.rsplit('.', 1)
+            try:
+                mod = importlib.import_module(modulePath)
+                cls = getattr(mod, className)
+                if not (isinstance(cls, type) and issubclass(cls, ServiceProvider)):
+                    logger.warning(f'[Providers] {fqn} is not a ServiceProvider subclass, skipping.')
+                    continue
+                providerClasses[className] = cls
+            except Exception as e:
+                msg = f'Failed to import provider {fqn}: {e}'
+                logger.error(f'[Providers] {msg}')
+                WidgetUtils.showAlertMsgBox(None, msg,'Provider Import Error')
+
+        # --- Phase 1: Topological sort (Kahn's algorithm) ---
+        # Build graph: after + requires + wants all contribute edges
+        inDegree = {name: 0 for name in providerClasses}
+        graph = {name: [] for name in providerClasses}  # name -> list of dependents
+        for name, cls in providerClasses.items():
+            deps = set(getattr(cls, 'after', []) + getattr(cls, 'requires', []) + getattr(cls, 'wants', []))
+            for dep in deps:
+                if dep in providerClasses:
+                    graph[dep].append(name)
+                    inDegree[name] += 1
+
+        queue = [n for n in providerClasses if inDegree[n] == 0]
+        sortedNames = []
+        while queue:
+            queue.sort()  # deterministic order
+            node = queue.pop(0)
+            sortedNames.append(node)
+            for dependent in graph[node]:
+                inDegree[dependent] -= 1
+                if inDegree[dependent] == 0:
+                    queue.append(dependent)
+
+        if len(sortedNames) != len(providerClasses):
+            cycle = set(providerClasses) - set(sortedNames)
+            msg = f'Circular dependency detected among providers: {cycle}'
+            logger.error(f'[Providers] {msg}')
+            WidgetUtils.showAlertMsgBox(title='Provider Dependency Error', msg=msg)
+            # Still load what we can
+            for name in providerClasses:
+                if name not in sortedNames:
+                    sortedNames.append(name)
+
+        # --- Phase 2: register() ---
+        failedProviders = set()
+        for name in sortedNames:
+            cls = providerClasses[name]
+            # Check requires
+            requiredDeps = getattr(cls, 'requires', [])
+            missingReqs = [r for r in requiredDeps if r in failedProviders]
+            if missingReqs:
+                logger.warning(f'[Providers] Skipping {name}: required providers failed: {missingReqs}')
+                failedProviders.add(name)
+                continue
+            try:
+                instance = cls(self)
+                instance.register()
+                providerInstances[name] = instance
+                logger.info(f'[Providers] ✓ Registered: {name}')
+            except Exception as e:
+                failedProviders.add(name)
+                msg = f'Provider {name}.register() failed: {e}'
+                logger.error(f'[Providers] {msg}')
+                WidgetUtils.showAlertMsgBox(title='Provider Registration Error', msg=msg)
+
+        # --- Phase 3: boot() ---
+        for name in sortedNames:
+            instance = providerInstances.get(name)
+            if not instance:
+                continue
+            try:
+                instance.boot()
+            except Exception as e:
+                msg = f'Provider {name}.boot() failed: {e}'
+                logger.error(f'[Providers] {msg}')
+                WidgetUtils.showAlertMsgBox(title='Provider Boot Error', msg=msg)
+
+        logger.info(f'[Providers] Loaded {len(providerInstances)}/{len(PROVIDERS)} providers.')
+        return self
+    def getMainWindowCtl(self) -> QMainWindow:
         for widget in self._app.topLevelWidgets():
             if type(widget).__name__ == 'MainController':
                 return widget
         return None
     def run(self) -> int:
-        """Start the Qt Event Loop."""
+        """Start the qasync event loop (replaces QApplication.exec())."""
         if not self._isBootstrapped:
             self.bootstrap()
-        return self._app.exec()
+        with self.loop:
+            self.loop.run_forever()
+            return 0
 
     @Slot()
     def _onExit(self):
@@ -229,7 +332,7 @@ class QtAppContext(QObject):
         logger.warning("Accessing 'taskManager' but feature is disabled or not initialized.")
         return None
 
-    def setState(self, key: str, value: Any) -> None:
+    def setState(self, key: str, value: Any) -> Self:
         with QMutexLocker(self._stateLock):
             self._sharedState[key] = value
         return self

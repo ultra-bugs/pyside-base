@@ -24,6 +24,17 @@ TEMPLATES = {
     'task_step': 'from core import TaskStep\n\nclass {name}Step(TaskStep):\n    """\n    {description}\n    \n    Attributes:\n        output_variable (str): Name of the variable to store the step result in\n    """\n    def __init__(self, param1=None, param2=None, output_var=None):\n        super().__init__("{name}", "{description}")\n        self.param1 = param1\n        self.param2 = param2\n        self.output_variable = output_var\n        \n    def execute(self, context, variables):\n        """\n        Execute the task step\n        \n        Args:\n            context (dict): Execution context\n            variables (dict): Task variables\n            \n        Returns:\n            Any: Result of the step execution\n        """\n        # TODO: Implement your step logic here\n        result = f"Executed {self.__class__.__name__} with params: {self.param1}, {self.param2}"\n        \n        # You can access task variables\n        # existing_value = variables.get("some_key", "default")\n        \n        # You can also access task object if provided in context\n        # task = context.get(\'task\')\n        # if task:\n        #     task.signals.progress.emit(task.id, 50)  # Report 50% progress\n        \n        return result\n',
 }
 
+TEMPLATES['provider'] = '''from core.contracts.ServiceProvider import ServiceProvider
+
+
+class {name}Provider(ServiceProvider):
+    """{description}"""
+
+    def register(self):
+        # self.ctx.registerService('serviceName', ServiceInstance())
+        pass
+'''
+
 
 def createFile(path, content):
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -75,11 +86,23 @@ def generateTaskStep(name, description, base_path):
             f.write('# Task steps package\n')
 
 
+def generateProvider(name, description, base_path):
+    providersDir = os.path.join(base_path, 'providers')
+    os.makedirs(providersDir, exist_ok=True)
+    providerPath = os.path.join(providersDir, f'{name}Provider.py')
+    createFile(providerPath, TEMPLATES['provider'].format(name=name, description=description))
+    initPath = os.path.join(providersDir, '__init__.py')
+    if not os.path.exists(initPath):
+        with open(initPath, 'w') as f:
+            f.write('# Providers package\n')
+    print(f'\nNext: run "pixi run compile-providers" to update the manifest.')
+
+
 def main():
     parser = argparse.ArgumentParser(description='Generate Qt app components')
-    parser.add_argument('type', choices=['controller', 'service', 'component', 'task', 'task_step'], help='Type of component to generate')
+    parser.add_argument('type', choices=['controller', 'service', 'component', 'task', 'task_step', 'provider'], help='Type of component to generate')
     parser.add_argument('name', help='Name of the component')
-    parser.add_argument('--description', '-d', help='Description (used for tasks and task steps)', default='Custom implementation')
+    parser.add_argument('--description', '-d', help='Description (used for tasks, task steps, and providers)', default='Custom implementation')
     args = parser.parse_args()
     base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app')
     if args.type == 'controller':
@@ -92,6 +115,8 @@ def main():
         generateTask(args.name, args.description, base_path)
     elif args.type == 'task_step':
         generateTaskStep(args.name, args.description, base_path)
+    elif args.type == 'provider':
+        generateProvider(args.name, args.description, base_path)
 
 
 if __name__ == '__main__':

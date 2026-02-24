@@ -114,13 +114,39 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC):
     
     def isStopped(self) -> bool:
         """Check if cancellation was requested."""
-    
+
+    def pause(self) -> None:
+        """
+        Request task pause.
+        Sets status to PAUSED. Thread blocks at next checkPaused() call.
+        Only effective for RUNNING tasks.
+        """
+
+    def resume(self) -> None:
+        """
+        Resume a paused task.
+        Sets status back to RUNNING. Wakes blocked thread.
+        """
+
+    def checkPaused(self) -> None:
+        """
+        Call periodically inside handle() to respect pause requests.
+        Blocks via QWaitCondition until resume() or cancel() is called.
+        No-op if task is not paused.
+
+        Subclass contract: handle() MUST call checkPaused() in loops
+        for pause to take effect.
+        """
+
     def cancel(self) -> None:
-        """Request task cancellation."""
-    
+        """
+        Request task cancellation.
+        Also wakes any paused thread so it can exit cleanly.
+        """
+
     def fail(self, reason: str) -> None:
         """Mark task as failed."""
-    
+
     def serialize(self) -> dict:
         """
         Convert task to dictionary for persistence.
@@ -358,13 +384,22 @@ class TaskManagerService(QtCore.QObject, Subscriber):
     
     def cancelTask(self, uuid: str) -> None:
         """Cancel a task."""
-    
+
     def pauseTask(self, uuid: str) -> None:
-        """Pause a task."""
-    
+        """
+        Pause a RUNNING task.
+        The task thread blocks at its next checkPaused() call.
+        No-op if task is not in RUNNING state (logs warning).
+        Raises TaskNotFoundException if uuid not found.
+        """
+
     def resumeTask(self, uuid: str) -> None:
-        """Resume a paused task."""
-    
+        """
+        Resume a PAUSED task.
+        Wakes the blocked thread, status transitions back to RUNNING.
+        No-op if task is not in PAUSED state (logs warning).
+        Raises TaskNotFoundException if uuid not found.
+        """    
     def getTaskStatus(self, uuid: str) -> TaskStatus:
         """Get task status."""
     

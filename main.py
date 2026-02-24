@@ -15,57 +15,28 @@
 import os
 import sys
 from pathlib import Path
-
-import qdarktheme
-from PySide6.QtCore import Qt
-
-from app.windows.main.MainController import MainController
-from core import Config, ExceptionHandler, logger
+if os.getenv('PYTHONUNBUFFERED', False) == '1':
+    from core.extends.pycharm_pydevd_qasync_fix_patch import patch_qasync_for_pycharm_debugger
+    patch_qasync_for_pycharm_debugger()
+# noinspection PyUnusedImports
+from _loader_ import *
 from core.QtAppContext import QtAppContext
 
-
-def configInit():
-    """Load configuration"""
-    config = Config()
-    config.load()
-    return config
-
-def setupEnvironment(config):
-    """Setup environment variables and paths"""
-    projectRoot = Path(__file__).parent
-    sys.path.append(str(projectRoot))
-    os.environ['QT_AUTO_SCREEN_SCALE_FACTOR'] = '1'
-
-def setupApp(config):
-    """Setup application components"""
-    ExceptionHandler.setupGlobalHandler()
-    logger.info('Application setup completed')
-
-def setupTheme(config: Config):
-    """Setup theme"""
-    if config.get('ui.high_dpi', True):
-        qdarktheme.enable_hi_dpi()
-    qdarktheme.setup_theme(config.get('ui.theme', 'auto'))
 
 def main():
     """Main entry point"""
     try:
-        config = configInit()
-        setupEnvironment(config)
-        setupApp(config)
         ctx = QtAppContext.globalInstance()
-        try:
-            app = ctx._app
-            app.setAttribute(Qt.AA_EnableHighDpiScaling)
-        except Exception:
-            pass
-        setupTheme(config)
         ctx.bootstrap()
+        # App services now registered via ServiceProviders (app/providers/)
         mainController = MainController()
         mainController.show()
-        sys.exit(ctx.run())
+        exitCode = ctx.run()
+        sys.exit(exitCode)
     except Exception:
         logger.exception('Application failed to start')
         raise
+
+
 if __name__ == '__main__':
     main()

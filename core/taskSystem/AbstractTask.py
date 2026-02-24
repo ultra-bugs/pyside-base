@@ -20,12 +20,12 @@ Provides common functionality, lifecycle management, and Qt signals integration.
 #                  * * * * * * * * * * * * * * * * * * * * *
 
 import abc
-import threading
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from PySide6 import QtCore
+from PySide6.QtCore import QMutex, QWaitCondition
 
 from ..Logging import logger
 from .Exceptions import TaskCancellationException
@@ -110,7 +110,10 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
             uniqueType: Uniqueness constraint for the task
         """
         QtCore.QObject.__init__(self)
-        # QtCore.QRunnable.__init__(self)
+        # this is temporary fix for PyCharm debugger (pydevd)
+        import os
+        if not os.getenv('PYTHONUNBUFFERED', False):
+            QtCore.QRunnable.__init__(self)
         self.uuid = uuid.uuid4().hex
         self.name = name
         self.description = description
@@ -130,7 +133,13 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         self.retryDelaySeconds = max(int(retryDelaySeconds), 1)
         self.currentRetryAttempts = 0
         self.failSilently = failSilently
-        self._stopEvent = threading.Event()
+        self._stopMutex = QMutex()
+        self._stopped = False
+        # Pause gate — Qt-native primitives (QMutex + QWaitCondition)
+        self._pauseMutex = QMutex()
+        self._pauseCondition = QWaitCondition()
+        self._isPaused = False
+        self._pauseCheckIntervalMs = 500
         # Tags Management
         self.tags = tags if tags is not None else set()
         # Handle deserialization: tags might come as list from JSON
@@ -184,6 +193,37 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         """Check if task has a specific tag."""
         return tag in self.tags
 
+    def pause(self) -> None:
+        '''
+        Request task pause. Thread will block at next checkPaused() call.
+        Only effective if handle() calls checkPaused() periodically.
+        '''
+        self._pauseMutex.lock()
+        self._isPaused = True
+        self._pauseMutex.unlock()
+        self.setStatus(TaskStatus.PAUSED)
+        logger.info(f'Task {self.uuid} paused')
+
+    def resume(self) -> None:
+        '''Resume a paused task. Wakes the blocked thread.'''
+        self._pauseMutex.lock()
+        self._isPaused = False
+        self._pauseCondition.wakeAll()
+        self._pauseMutex.unlock()
+        self.setStatus(TaskStatus.RUNNING)
+        logger.info(f'Task {self.uuid} resumed')
+
+    def checkPaused(self) -> None:
+        '''
+        Call periodically inside handle() to respect pause requests.
+        Blocks the executing thread until resume() or cancel() is called.
+        No-op if task is not paused.
+        '''
+        self._pauseMutex.lock()
+        while self._isPaused and not self.isStopped():
+            self._pauseCondition.wait(self._pauseMutex, self._pauseCheckIntervalMs)
+        self._pauseMutex.unlock()
+
     def setChainContext(self, context: 'ChainContext') -> None:
         """
         Set the chain context for this task.
@@ -201,22 +241,32 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         Returns:
             True if stop was requested, False otherwise
         """
-        return self._stopEvent.is_set()
+        self._stopMutex.lock()
+        stopped = self._stopped
+        self._stopMutex.unlock()
+        return stopped
 
     def cancel(self) -> None:
-        """
+        '''
         Request task cancellation.
-        Sets the stop event and performs cancellation cleanup.
+        Sets the stop event and wakes any paused thread so it can exit.
         If task is PENDING or PAUSED, immediately transitions to CANCELLED.
-        """
+        '''
         logger.info(f'Cancelling task {self.uuid} - {self.name}')
-        self._stopEvent.set()
+        self._stopMutex.lock()
+        self._stopped = True
+        self._stopMutex.unlock()
+        # Wake paused thread so it can detect stop and exit cleanly
+        self._pauseMutex.lock()
+        self._isPaused = False
+        self._pauseCondition.wakeAll()
+        self._pauseMutex.unlock()
         if self.status in (TaskStatus.PENDING, TaskStatus.PAUSED):
             self.setStatus(TaskStatus.CANCELLED)
         try:
             self._performCancellationCleanup()
         except Exception as e:
-            logger.error(f'Error during cancellation cleanup for task {self.uuid}: {e}')
+            logger.opt(exception=e).error(f'Error during cancellation cleanup for task {self.uuid}: {e}')
 
     def fail(self, reason: str = 'Task failed by itself', exception: Optional[Exception] = None) -> None:
         """

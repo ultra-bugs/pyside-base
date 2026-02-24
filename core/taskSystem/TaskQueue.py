@@ -196,6 +196,11 @@ class TaskQueue(QtCore.QObject):
             logger.critical('--------------- NEED RECHECK')
             return
         task = self._runningTasks.pop(uuid)
+        # Disconnect to prevent duplicate connections on retry
+        try:
+            task.taskFinished.disconnect(self._handleTaskCompletion)
+        except RuntimeError:
+            pass
         
         # Update Unique Index (Remove from Running)
         if task.uniqueType != UniqueType.NONE:
@@ -205,15 +210,14 @@ class TaskQueue(QtCore.QObject):
             self._cleanupUniqueKey(key)
 
         logger.info(f'Task completed: {uuid} - Status: {finalStatus.name}')
-        # Handle retry logic for failed tasks
-        if finalStatus == TaskStatus.FAILED and task.currentRetryAttempts < task.maxRetries:
+        # Handle retry logic for failed tasks (skip if cancelled)
+        if finalStatus == TaskStatus.FAILED and task.isStopped() is False and task.currentRetryAttempts < task.maxRetries:
             task.currentRetryAttempts += 1
             task.setStatus(TaskStatus.RETRYING)
             logger.info(f'Task {uuid} will retry (attempt {task.currentRetryAttempts}/{task.maxRetries}) in {task.retryDelaySeconds}s')
             # Log this retry attempt
             self._taskTracker.logFailedTask(task)
-            # Schedule retry via timer (TaskScheduler will handle this in real implementation)
-            # For now, we'll use a simple QTimer
+            # Schedule retry via timer
             QtCore.QTimer.singleShot(task.retryDelaySeconds * 1000, lambda: self._retryTask(task))
         else:
             # Task is done (completed, cancelled, or failed without retry)
@@ -232,30 +236,61 @@ class TaskQueue(QtCore.QObject):
         self._processQueue()
 
     def _retryTask(self, task: Any) -> None:
-        """
-        Retry a failed task.
+        '''
+        Re-enqueue a failed task for retry.
         Args:
             task: Task to retry
-        """
+        '''
+        # Guard: skip retry if task was cancelled while waiting for retry timer
+        if task.isStopped() or task.status == TaskStatus.CANCELLED:
+            logger.info(f'Skipping retry for cancelled task: {task.uuid} - {task.name}')
+            try:
+                self._taskTracker.removeTask(task.uuid)
+            except TaskNotFoundException:
+                pass
+            return
         logger.info(f'Retrying task: {task.uuid} - {task.name}')
         # Reset task state for retry
-        task.status = TaskStatus.PENDING
+        task.setStatus(TaskStatus.PENDING)
         task.error = None
-        task._stopEvent.clear()
-        # Add back to queue
-        self.addTask(task)
+        task.errorException = None
+        task._stopMutex.lock()
+        task._stopped = False
+        task._stopMutex.unlock()
+        # Re-enqueue directly — task stays in tracker (already tracked)
+        self._pendingTasks.append(task)
+        self.queueStatusChanged.emit()
+        self._processQueue()
 
     def loadState(self) -> None:
-        """
-        Load pending tasks from storage.
-        Note: Tasks must implement deserialize() for this to work.
-        Currently not fully implemented as it requires task registry.
-        """
+        '''
+        Load pending tasks from storage and re-enqueue them.
+        Only tasks serialized as persistent are restored.
+        '''
         try:
-            # TODO: Implement task deserialization when task registry is available
-            logger.debug('TaskQueue state loading not yet implemented')
+            tasksData = self._storage.load('pendingTasks', [])
+            if not tasksData:
+                logger.debug('No pending tasks to restore')
+                return
+            restored = 0
+            for taskData in tasksData:
+                try:
+                    className = taskData.get('className')
+                    if not className:
+                        logger.warning('Pending task missing className, skipping')
+                        continue
+                    moduleName, clsName = className.rsplit('.', 1)
+                    module = __import__(moduleName, fromlist=[clsName])
+                    taskCls = getattr(module, clsName)
+                    task = taskCls.deserialize(taskData)
+                    if task:
+                        self.addTask(task)
+                        restored += 1
+                except Exception as e:
+                    logger.opt(exception=e).error(f'Failed to restore pending task: {e}')
+            logger.info(f'Restored {restored}/{len(tasksData)} pending tasks from storage')
         except Exception as e:
-            logger.error(f'Error loading TaskQueue state: {e}')
+            logger.opt(exception=e).error(f'Error loading TaskQueue state: {e}')
 
     def saveState(self) -> None:
         """

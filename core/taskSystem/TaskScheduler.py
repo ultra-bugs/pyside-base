@@ -37,7 +37,8 @@ class ScheduledJob:
     Represents a scheduled job with its timer and metadata.
     """
 
-    def __init__(self, jobId: str, taskUuid: str, taskClass: str, taskData: Dict[str, Any], trigger: str, timer: QtCore.QTimer, nextRun: Optional[datetime] = None):
+    def __init__(self, jobId: str, taskUuid: str, taskClass: str, taskData: Dict[str, Any], trigger: str, timer: QtCore.QTimer, nextRun: Optional[datetime] = None,
+                 intervalSeconds: Optional[int] = None, cronHour: Optional[int] = None, cronMinute: Optional[int] = None):
         self.jobId = jobId
         self.taskUuid = taskUuid
         self.taskClass = taskClass
@@ -45,11 +46,14 @@ class ScheduledJob:
         self.trigger = trigger
         self.timer = timer
         self.nextRun = nextRun
+        self.intervalSeconds = intervalSeconds
+        self.cronHour = cronHour
+        self.cronMinute = cronMinute
         self.createdAt = datetime.now()
 
     def toDict(self) -> Dict[str, Any]:
         """Serialize job for persistence."""
-        return {
+        result = {
             'jobId': self.jobId,
             'taskUuid': self.taskUuid,
             'taskClass': self.taskClass,
@@ -58,6 +62,13 @@ class ScheduledJob:
             'nextRun': self.nextRun.isoformat() if self.nextRun else None,
             'createdAt': self.createdAt.isoformat(),
         }
+        if self.intervalSeconds is not None:
+            result['intervalSeconds'] = self.intervalSeconds
+        if self.cronHour is not None:
+            result['cronHour'] = self.cronHour
+        if self.cronMinute is not None:
+            result['cronMinute'] = self.cronMinute
+        return result
 
 
 class TaskScheduler(QtCore.QObject):
@@ -133,10 +144,22 @@ class TaskScheduler(QtCore.QObject):
                 raise ValueError("intervalSeconds is required for 'interval' trigger")
             if intervalSeconds <= 0:
                 raise ValueError('intervalSeconds must be > 0')
-            delayMs = intervalSeconds * 1000
-            timer.setInterval(delayMs)
-            nextRun = datetime.now() + timedelta(seconds=intervalSeconds)
-            logger.info(f'Scheduled recurring task {taskUuid} every {intervalSeconds}s')
+            startDate = kwargs.get('startDate')
+            if startDate and startDate > datetime.now():
+                # First execution at startDate, then switch to repeating interval
+                initialDelayMs = int((startDate - datetime.now()).total_seconds() * 1000)
+                timer.setSingleShot(True)
+                timer.setInterval(initialDelayMs)
+                nextRun = startDate
+                # Store intervalSeconds for rescheduling after first run
+                kwargs['_intervalSeconds'] = intervalSeconds
+                logger.info(f'Scheduled recurring task {taskUuid}: first run at {startDate}, then every {intervalSeconds}s')
+            else:
+                # No startDate or past startDate: start repeating immediately
+                delayMs = intervalSeconds * 1000
+                timer.setInterval(delayMs)
+                nextRun = datetime.now() + timedelta(seconds=intervalSeconds)
+                logger.info(f'Scheduled recurring task {taskUuid} every {intervalSeconds}s')
         elif trigger == 'cron':
             hour = kwargs.get('hour')
             minute = kwargs.get('minute', 0)
@@ -153,7 +176,8 @@ class TaskScheduler(QtCore.QObject):
         else:
             raise ValueError(f'Unknown trigger type: {trigger}')
         timer.timeout.connect(lambda: self._executeScheduledTask(jobId, taskUuid, taskClass, taskData, trigger, **kwargs))
-        job = ScheduledJob(jobId, taskUuid, taskClass, taskData, trigger, timer, nextRun)
+        job = ScheduledJob(jobId, taskUuid, taskClass, taskData, trigger, timer, nextRun,
+                           intervalSeconds=intervalSeconds, cronHour=kwargs.get('hour'), cronMinute=kwargs.get('minute'))
         self._jobs[jobId] = job
         timer.start()
         self._saveJobs()
@@ -187,6 +211,18 @@ class TaskScheduler(QtCore.QObject):
             self._taskQueue.addTask(task)
             self.jobExecuted.emit(jobId, taskUuid)
             if trigger == 'interval':
+                job = self._jobs.get(jobId)
+                if job:
+                    # Check if this was a deferred first run (single-shot → switch to repeating)
+                    deferredInterval = kwargs.get('_intervalSeconds')
+                    if deferredInterval and job.timer.isSingleShot():
+                        job.timer.setSingleShot(False)
+                        job.timer.setInterval(deferredInterval * 1000)
+                        job.timer.start()
+                        logger.info(f'Interval job {jobId}: switched to repeating every {deferredInterval}s')
+                    # Update nextRun for display
+                    currentInterval = job.timer.interval() // 1000
+                    job.nextRun = datetime.now() + timedelta(seconds=currentInterval)
                 logger.debug(f'Interval job {jobId} will repeat automatically')
             elif trigger == 'cron':
                 job = self._jobs.get(jobId)
@@ -266,13 +302,15 @@ class TaskScheduler(QtCore.QObject):
             logger.error(f'Failed to save scheduled jobs: {e}')
 
     def _loadJobs(self) -> None:
-        """Load scheduled jobs from storage."""
+        """Load scheduled jobs from storage and reconstruct timers."""
         try:
             jobsData = self._storage.load('scheduledJobs', [])
             if not jobsData:
                 logger.debug('No persisted jobs to load')
                 return
             logger.info(f'Loading {len(jobsData)} persisted jobs')
+            loaded = 0
+            skipped = 0
             for jobData in jobsData:
                 try:
                     jobId = jobData['jobId']
@@ -281,18 +319,99 @@ class TaskScheduler(QtCore.QObject):
                     taskData = jobData['taskData']
                     trigger = jobData['trigger']
                     nextRunStr = jobData.get('nextRun')
-                    if not nextRunStr:
-                        logger.warning(f'Job {jobId} has no nextRun time, skipping')
-                        continue
-                    nextRun = datetime.fromisoformat(nextRunStr)
+
+                    # Verify task class can be deserialized
+                    moduleName, className = taskClass.rsplit('.', 1)
+                    module = __import__(moduleName, fromlist=[className])
+                    taskCls = getattr(module, className)
+                    if not hasattr(taskCls, 'deserialize'):
+                        raise TypeError(f'Task class {taskClass} has no deserialize method')
+                    # Dry-run deserialize to verify data integrity
+                    taskCls.deserialize(taskData)
+
                     now = datetime.now()
-                    if nextRun < now and trigger == 'date':
-                        logger.info(f'Skipping past one-time job {jobId} (was scheduled for {nextRun})')
+                    timer = QtCore.QTimer(self)
+                    nextRun = datetime.fromisoformat(nextRunStr) if nextRunStr else None
+                    intervalSeconds = jobData.get('intervalSeconds')
+                    cronHour = jobData.get('cronHour')
+                    cronMinute = jobData.get('cronMinute', 0)
+
+                    if trigger == 'date':
+                        if not nextRun or nextRun <= now:
+                            logger.info(f'Skipping past one-time job {jobId} (was scheduled for {nextRun})')
+                            skipped += 1
+                            continue
+                        delayMs = int((nextRun - now).total_seconds() * 1000)
+                        timer.setSingleShot(True)
+                        timer.setInterval(delayMs)
+
+                    elif trigger == 'interval':
+                        if not intervalSeconds:
+                            # Backward compat: infer from nextRun - createdAt
+                            createdAtStr = jobData.get('createdAt')
+                            if nextRun and createdAtStr:
+                                createdAt = datetime.fromisoformat(createdAtStr)
+                                intervalSeconds = max(int((nextRun - createdAt).total_seconds()), 60)
+                                logger.info(f'Job {jobId}: inferred intervalSeconds={intervalSeconds} from persisted data')
+                            else:
+                                logger.warning(f'Job {jobId} missing intervalSeconds, skipping')
+                                skipped += 1
+                                continue
+                        if nextRun and nextRun > now:
+                            # Still waiting for next run, set delay to remaining time
+                            delayMs = int((nextRun - now).total_seconds() * 1000)
+                        else:
+                            # Past due: advance nextRun by multiples of interval until future
+                            anchor = nextRun if nextRun else now
+                            elapsed = (now - anchor).total_seconds()
+                            periodsElapsed = int(elapsed / intervalSeconds) + 1
+                            nextRun = anchor + timedelta(seconds=periodsElapsed * intervalSeconds)
+                            delayMs = int((nextRun - now).total_seconds() * 1000)
+                            logger.info(f'Job {jobId}: past due, next run recalculated to {nextRun} ({delayMs}ms)')
+                        # First tick uses singleShot delay, _executeScheduledTask switches to repeating
+                        timer.setSingleShot(True)
+                        timer.setInterval(delayMs)
+
+                    elif trigger == 'cron':
+                        if cronHour is None:
+                            logger.warning(f'Job {jobId} missing cronHour, skipping')
+                            skipped += 1
+                            continue
+                        nextRun = now.replace(hour=cronHour, minute=cronMinute, second=0, microsecond=0)
+                        if nextRun <= now:
+                            nextRun += timedelta(days=1)
+                        delayMs = int((nextRun - now).total_seconds() * 1000)
+                        timer.setSingleShot(True)
+                        timer.setInterval(delayMs)
+
+                    else:
+                        logger.warning(f'Unknown trigger type {trigger} for job {jobId}, skipping')
+                        skipped += 1
                         continue
-                    logger.info(f'Rescheduling persisted job {jobId}')
-                    logger.warning(f'Job {jobId} persistence not fully implemented yet')
+
+                    # Build kwargs for _executeScheduledTask
+                    execKwargs = {}
+                    if trigger == 'interval' and intervalSeconds:
+                        execKwargs['_intervalSeconds'] = intervalSeconds
+                    if trigger == 'cron':
+                        execKwargs['hour'] = cronHour
+                        execKwargs['minute'] = cronMinute
+
+                    # Connect timer to executor with captured kwargs
+                    timer.timeout.connect(lambda jid=jobId, tuuid=taskUuid, tc=taskClass, td=taskData, tr=trigger, ek=execKwargs:
+                                          self._executeScheduledTask(jid, tuuid, tc, td, tr, **ek))
+
+                    job = ScheduledJob(jobId, taskUuid, taskClass, taskData, trigger, timer, nextRun,
+                                       intervalSeconds=intervalSeconds, cronHour=cronHour, cronMinute=cronMinute)
+                    self._jobs[jobId] = job
+                    timer.start()
+                    loaded += 1
+                    logger.info(f'Restored job {jobId}: trigger={trigger}, nextRun={nextRun}')
+
                 except Exception as e:
-                    logger.error(f'Failed to load job {jobData.get("jobId", "unknown")}: {e}')
-                    continue
+                    logger.opt(exception=e).error(f'Failed to load job {jobData.get("jobId", "unknown")}: {e}')
+                    raise  # Raise so caller knows deserialization failed
+            logger.info(f'Schedule persistence: loaded={loaded}, skipped={skipped}')
         except Exception as e:
-            logger.error(f'Failed to load scheduled jobs: {e}')
+            logger.opt(exception=e).error(f'Failed to load scheduled jobs: {e}')
+            raise

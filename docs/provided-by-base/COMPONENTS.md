@@ -107,7 +107,7 @@ class MyComponentHandler(Subscriber):
 ### 6. Sử Dụng Component
 
 ```python
-from windows.components.MyComponent import MyComponentWidget
+from app.windows.components.MyComponent import MyComponentWidget
 
 class ParentController(BaseController):
     def setup_components(self):

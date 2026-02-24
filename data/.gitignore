@@ -1,0 +1,4 @@
+#Ignore all, but keep .gitignore.
+#Same popurse as .gitkeep
+*
+!.gitignore

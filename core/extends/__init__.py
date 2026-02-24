@@ -17,6 +17,6 @@ Core extensions module
 #                  * * * * * * * * * * * * * * * * * * * * *
 
 #
-from .CurlSslAntiDetectSession import install_anti_detect_session
+from .CurlSslAntiDetectSession import installAntiDetectSession
 
-__all__ = ['install_anti_detect_session']
+__all__ = ['installAntiDetectSession']
