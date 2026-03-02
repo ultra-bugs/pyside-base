@@ -8,9 +8,10 @@ platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 # Core runtime deps
 [dependencies]
 python = ">=3.13,<3.14"
-pyside6 = ">=6.5.1,<7"
+pyside6 = ">=6.8,<7"
 pixi-pycharm = ">=0.0.10,<0.0.11"
 cffi = ">=2.0.0,<3"
+numpy = "2.2.*"
 
 # PyPI deps (not available or not preferred from conda-forge for this project)
 [pypi-dependencies]
@@ -20,10 +21,9 @@ pyqtdarktheme = ">=2.1.0, <3"
 case-converter = ">=1.2.0, <2"
 python-box = ">=7.3.2, <8"
 curl_cffi = ">=0.14.0, <0.15"
-numpy = ">=2.4.1, <3"
 qasync = ">=0.28.0, <0.29"
 better-exceptions = "*"
-pyside6 = ">=6.5.1,<7"
+pyside6 = ">=6.8,<7"
 # Dev tools for local development (enabled by default via the default environment below)
 [feature.dev.pypi-dependencies]
 ruff = ">=0.14.14, <0.15"
@@ -56,11 +56,11 @@ dev = { depends-on = ["compile-ui", "compile-providers", "start"] }
 compile-ui = "python scripts/compile_ui.py"
 compile-providers = "python scripts/compile_providers.py"
 uic = { depends-on = ["compile-ui"] }
+uip = { depends-on = ["compile-providers"] }
 generate = "python scripts/generate.py"
-gen = "python scripts/generate.py"
+make = "python scripts/generate.py"
 set-app-info = "python scripts/set_app_info.py"
 upi = "python scripts/update_task_imports.py"
-clean-breaks = "python scripts/clean-line-breaks.py"
 
 # Quality & tests
 test = "python scripts/run_pytest.py"
@@ -74,14 +74,15 @@ format-check = "ruff format --check ."
 sort = "isort  . --gitignore --py 313 --conda-env .pixi/envs/default"
 sort-check = "isort . -c --gitignore --py 313 --conda-env .pixi/envs/default"
 type-check = "mypy ."
-eol-minimize="python scripts/clean-line-breaks.py"
+clean-line-breaks = "python scripts/clean-line-breaks.py"
+eolminimize = { depends-on = ["clean-line-breaks"] }
 check = { depends-on = ["lint", "type-check", "sort-check"] }
-fix = { depends-on = ["format", "sort", "eol-minimize"] }
+fix = { depends-on = ["format", "sort", "clean-line-breaks"] }
 
 # Utilities
 check-pixi = "python -c \"import sys,platform; print('Pixi OK'); print('Python:', sys.version); print('Platform:', platform.platform())\""
 clean-logs = "python -c \"import shutil, os; p='data\\\\logs'; shutil.rmtree(p, ignore_errors=True); os.makedirs(p, exist_ok=True); print('Cleaned logs in', p)\""
 cleanpyc = "python scripts/clean_pyc.py"
-
+clean = { depends-on = ["clean-logs", "cleanpyc"] }
 [target.win-64.pypi-dependencies]
 #pywin32 = ">=311, <312"

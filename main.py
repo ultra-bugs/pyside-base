@@ -11,16 +11,21 @@
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
+import faulthandler
 import os
+
+# Enable faulthandler early: dumps Python traceback on fatal C-level crashes
+# (SIGSEGV, SIGABRT, Access Violation 0xC0000005) to stderr before process exits.
+faulthandler.enable()
+
 if os.getenv('PYTHONUNBUFFERED', False) == '1':
     from core.extends.pycharm_pydevd_qasync_fix_patch import \
         patch_qasync_for_pycharm_debugger
     patch_qasync_for_pycharm_debugger()
 # noinspection PyUnusedImports
 from _loader_ import *
-from core.QtAppContext import QtAppContext
 from app.windows.main.MainController import MainController
+from core.QtAppContext import QtAppContext
 
 
 def main():

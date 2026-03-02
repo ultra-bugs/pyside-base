@@ -24,7 +24,6 @@ Subclasses must implement:
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
 import time
 import uuid
 from abc import ABC, abstractmethod

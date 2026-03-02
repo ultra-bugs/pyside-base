@@ -25,7 +25,6 @@ Subclasses typically:
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
 from abc import ABC
 from typing import Any
 

@@ -11,7 +11,6 @@
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
 import inspect
 import json
 import os
@@ -41,6 +40,7 @@ class PathHelperInternals:
     Internal utility methods for PathHelper.
     These methods directly use pathlib to avoid circular references.
     They should not be used outside of PathHelper.
+    The snake_case methods always return a pathlib.Path object.
     """
 
     @staticmethod
@@ -446,6 +446,17 @@ class PathHelper:
         return PathHelperInternals.getPathIsDir(path)
 
     @staticmethod
+    def isDirReadable(path: Union[str, pathlib.Path]) -> bool:
+        """
+        Check if the path points to a directory.
+        Args:
+            path: The path to check.
+        Returns:
+            bool: True if path is a directory, False otherwise.
+        """
+        return PathHelperInternals.getPathIsDir(path) and os.access(str(PathHelperInternals.get_path_resolve(path)), os.R_OK)
+
+    @staticmethod
     def isFileExists(path: Union[str, pathlib.Path]) -> bool:
         """
         Check if a file exists.
@@ -567,7 +578,12 @@ class PathHelper:
         if PathHelperInternals.getPathIsSymlink(path_obj):
             return PathHelperInternals.get_path_resolve(path_obj)
         return None
-
+    @staticmethod
+    def appendToPythonPath(path):
+        absPath = PathHelperInternals.get_path_resolve(path).absolute()
+        if str(absPath) not in sys.path:
+            sys.path.append(str(absPath))
+        pass
     @staticmethod
     def isUsingSymlinkedCore() -> bool:
         """

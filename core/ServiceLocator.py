@@ -11,8 +11,6 @@
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
-#
 from typing import Any, Dict, List, Optional, Type, TypeVar
 
 from PySide6.QtCore import QMutex, QMutexLocker, QObject

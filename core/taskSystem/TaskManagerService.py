@@ -18,8 +18,6 @@ Provides the primary API for other parts of the application to interact with tas
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
-#
 from typing import Any, Dict, List, Optional
 
 from PySide6 import QtCore
@@ -30,6 +28,7 @@ from ..Observer import Publisher, Subscriber
 from . import AbstractTask
 from .ChainRetryBehavior import ChainRetryBehavior
 from .Exceptions import TaskNotFoundException
+from .signals.TaskManagerSignals import TaskManagerSignals
 from .storage import BaseStorage
 from .storage.JsonStorage import JsonStorage
 from .TaskQueue import TaskQueue
@@ -38,6 +37,30 @@ from .TaskStatus import TaskStatus
 from .TaskTracker import TaskTracker
 
 logger = logger.bind(component='TaskSystem')
+
+# Modules to suppress when TaskSystem logging is disabled
+_TASK_SYSTEM_MODULES = (
+    'core.taskSystem',
+    'core.taskSystem.TaskManagerService',
+    'core.taskSystem.TaskScheduler',
+    'core.taskSystem.TaskQueue',
+    'core.taskSystem.TaskTracker',
+    'core.taskSystem.TaskChain',
+    'core.taskSystem.storage',
+    'core.taskSystem.storage.JsonStorage',
+)
+
+
+def _setTaskSystemLogging(enabled: bool) -> None:
+    """Toggle TaskSystem logging using loguru's built-in disable/enable.
+    When disabled, ALL logs from core.taskSystem.* modules are suppressed.
+    """
+    from loguru import logger as _rootLogger
+    for mod in _TASK_SYSTEM_MODULES:
+        if enabled:
+            _rootLogger.enable(mod)
+        else:
+            _rootLogger.disable(mod)
 
 
 class TaskManagerService(QtCore.QObject):
@@ -61,13 +84,8 @@ class TaskManagerService(QtCore.QObject):
         systemReady: Emitted when system initialization is complete
     """
 
-    taskAdded = QtCore.Signal(str)
-    taskRemoved = QtCore.Signal(str)
-    taskFinished = QtCore.Signal(str, object, object, object)  # uuid, task instance, result, error
-    taskStatusUpdated = QtCore.Signal(str, object)  # uuid, status (TaskStatus)
-    taskProgressUpdated = QtCore.Signal(str, int)
-    failedTaskLogged = QtCore.Signal(dict)
-    systemReady = QtCore.Signal()
+    # Signals are provided by TaskManagerSignals (composition).
+    # Proxy properties below for backward-compat.
 
     def __init__(self, publisher: Publisher, config: Config, storage: Optional[BaseStorage] = None):
         """
@@ -78,18 +96,49 @@ class TaskManagerService(QtCore.QObject):
         """
         Subscriber.__init__(self, events=['TaskRequest'], isGlobalSubscriber=True)
         QtCore.QObject.__init__(self)
+        self.signals = TaskManagerSignals()
         self._publisher = publisher
         self._config = config
         self._storage = storage or JsonStorage()
+        self._isLoggingEnabled = True
         logger.info('Initializing TaskManagerService subsystems...')
         self._taskTracker = TaskTracker(self._storage)
         self._taskQueue = TaskQueue(self._taskTracker, self._storage, config)
         self._taskScheduler = TaskScheduler(self._taskQueue, self._storage)
         self._connectSubsystemSignals()
-        self.loadState()
         self._applyConfig()
         logger.info('TaskManagerService initialized successfully')
         self.systemReady.emit()
+
+    # ── Signal proxy properties (backward-compat) ─────────────────────────────
+
+    @property
+    def taskAdded(self):
+        return self.signals.taskAdded
+
+    @property
+    def taskRemoved(self):
+        return self.signals.taskRemoved
+
+    @property
+    def taskFinished(self):
+        return self.signals.taskFinished
+
+    @property
+    def taskStatusUpdated(self):
+        return self.signals.taskStatusUpdated
+
+    @property
+    def taskProgressUpdated(self):
+        return self.signals.taskProgressUpdated
+
+    @property
+    def failedTaskLogged(self):
+        return self.signals.failedTaskLogged
+
+    @property
+    def systemReady(self):
+        return self.signals.systemReady
 
     def _connectSubsystemSignals(self) -> None:
         """
@@ -105,11 +154,34 @@ class TaskManagerService(QtCore.QObject):
         self._taskScheduler.jobUnscheduled.connect(self._onJobUnscheduled)
         logger.debug('TaskManagerService signals connected')
 
+    def booted(self) -> None:
+        """Load persisted state after UI is visible (post-boot phase).
+        Called via QTimer.singleShot(0, ...) from QtAppContext after appReady.
+        Suppresses verbose TaskSystem logs during loading.
+        """
+        logger.info('TaskManagerService post-boot: loading persisted state...')
+        self.setLoggingEnabled(False)
+        try:
+            self.loadState()
+            self._taskScheduler._loadJobs()
+        finally:
+            self.setLoggingEnabled(True)
+        jobCount = len(self._taskScheduler._jobs)
+        failedCount = len(self._taskTracker.getFailedTaskHistory())
+        logger.info(f'TaskManagerService post-boot complete: {jobCount} jobs, {failedCount} failed tasks loaded')
+
+    def setLoggingEnabled(self, enabled: bool) -> None:
+        """Toggle TaskSystem logging at runtime.
+        When disabled, DEBUG/INFO logs from component=TaskSystem are suppressed.
+        WARNING and above always pass through.
+        """
+        self._isLoggingEnabled = enabled
+        _setTaskSystemLogging(enabled)
+
     def _applyConfig(self) -> None:
         """Apply configuration settings to subsystems."""
         maxConcurrent = self._config.get('taskSystem.maxConcurrentTasks', 3)
         self.setMaxConcurrentTasks(maxConcurrent)
-        pass
 
     def addTask(self, task: Any, scheduleInfo: Optional[Dict[str, Any]] = None) -> None:
         """

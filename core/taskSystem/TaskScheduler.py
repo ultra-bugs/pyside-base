@@ -19,13 +19,13 @@ Supports date-based, interval-based, and basic cron-style scheduling.
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from PySide6 import QtCore
 
 from ..Logging import logger
+from .signals.TaskSchedulerSignals import TaskSchedulerSignals
 from .storage.BaseStorage import BaseStorage
 
 logger = logger.bind(component='TaskSystem')
@@ -98,9 +98,8 @@ class TaskScheduler(QtCore.QObject):
         jobExecuted: Emitted when a job triggers (jobId, taskUuid)
     """
 
-    jobScheduled = QtCore.Signal(str, str)
-    jobUnscheduled = QtCore.Signal(str)
-    jobExecuted = QtCore.Signal(str, str)
+    # Signals are provided by TaskSchedulerSignals (composition).
+    # Proxy properties below for backward-compat.
 
     def __init__(self, taskQueue, storage: BaseStorage):
         """
@@ -110,11 +109,25 @@ class TaskScheduler(QtCore.QObject):
             storage: Storage backend for persistence
         """
         super().__init__()
+        self.signals = TaskSchedulerSignals()
         self._taskQueue = taskQueue
         self._storage = storage
         self._jobs: Dict[str, ScheduledJob] = {}
-        self._loadJobs()
         logger.info('TaskScheduler initialized (Pure Qt)')
+
+    # ── Signal proxy properties (backward-compat) ─────────────────────────────
+
+    @property
+    def jobScheduled(self):
+        return self.signals.jobScheduled
+
+    @property
+    def jobUnscheduled(self):
+        return self.signals.jobUnscheduled
+
+    @property
+    def jobExecuted(self):
+        return self.signals.jobExecuted
 
     def addScheduledTask(self, task: Any, trigger: str, runDate: Optional[datetime] = None, intervalSeconds: Optional[int] = None, **kwargs) -> str:
         """
@@ -286,6 +299,7 @@ class TaskScheduler(QtCore.QObject):
                 'trigger': job.trigger,
                 'next_run_time': job.nextRun.isoformat() if job.nextRun else None,
                 'created_at': job.createdAt.isoformat(),
+                'is_active': job.timer.isActive(),
             }
             jobs.append(jobInfo)
         return jobs

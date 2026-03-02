@@ -11,7 +11,6 @@
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
 import os
 import sys
 from typing import Any, Optional, Self, Union
@@ -163,10 +162,17 @@ class QtAppContext(QObject):
             self._loadAppProviders()
             self._publisher.notify('app.ready')
             self.appReady.emit()
+            self._schedulePostBootInit()
             logger.info('Application Context Ready.')
             return self
 
-    def _loadAppProviders(self) -> Self:
+    def _schedulePostBootInit(self) -> None:
+        """Schedule heavy subsystem init for next event loop tick (post-boot)."""
+        from PySide6.QtCore import QTimer
+        if self._taskManager:
+            QTimer.singleShot(0, self._taskManager.booted)
+
+    def _loadAppProviders(self):
         """Load and execute app ServiceProviders from build-time manifest."""
         try:
             from app.providers._provider_manifest import PROVIDERS
@@ -256,9 +262,8 @@ class QtAppContext(QObject):
                 logger.error(f'[Providers] {msg}')
                 WidgetUtils.showAlertMsgBox(title='Provider Boot Error', msg=msg)
         logger.info(f'[Providers] Loaded {len(providerInstances)}/{len(PROVIDERS)} providers.')
-        return self
 
-    def getMainWindowCtl(self) -> QMainWindow:
+    def getMainWindowCtl(self):
         for widget in self._app.topLevelWidgets():
             if type(widget).__name__ == 'MainController':
                 return widget
@@ -323,7 +328,7 @@ class QtAppContext(QObject):
         logger.warning("Accessing 'taskManager' but feature is disabled or not initialized.")
         return None
 
-    def setState(self, key: str, value: Any) -> Self:
+    def setState(self, key: str, value: Any) -> 'QtAppContext':
         with QMutexLocker(self._stateLock):
             self._sharedState[key] = value
         return self

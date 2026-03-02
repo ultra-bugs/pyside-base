@@ -18,7 +18,6 @@ Monitors task status, progress, and logs failures for analysis.
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
 import threading
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
@@ -28,6 +27,7 @@ from PySide6 import QtCore
 from ..Logging import logger
 from . import AbstractTask
 from .Exceptions import TaskNotFoundException
+from .signals.TaskTrackerSignals import TaskTrackerSignals
 from .storage.BaseStorage import BaseStorage
 from .TaskStatus import TaskStatus
 
@@ -42,14 +42,12 @@ class TaskTracker(QtCore.QObject):
     Tracks active tasks, manages signals, and persists history.
     """
 
-    taskAdded = QtCore.Signal(str)
-    taskRemoved = QtCore.Signal(str)
-    taskStatusUpdated = QtCore.Signal(str, object)  # uuid, status (TaskStatus)
-    taskFinished = QtCore.Signal(str, object, object, object)  # uuid, task instance, result, error
-    failedTaskLogged = QtCore.Signal(dict)
+    # Signals are provided by TaskTrackerSignals (composition).
+    # Proxy properties below for backward-compat.
 
     def __init__(self, storage: BaseStorage):
         super().__init__()
+        self.signals = TaskTrackerSignals()
         self._storage = storage
         self._activeTasks: Dict[str, Any] = {}
         self._failedTaskHistory: List[Dict[str, Any]] = []
@@ -61,6 +59,28 @@ class TaskTracker(QtCore.QObject):
         self._lock = threading.RLock()
         self.loadState()
         logger.info('TaskTracker initialized')
+
+    # ── Signal proxy properties (backward-compat) ─────────────────────────────
+
+    @property
+    def taskAdded(self):
+        return self.signals.taskAdded
+
+    @property
+    def taskRemoved(self):
+        return self.signals.taskRemoved
+
+    @property
+    def taskStatusUpdated(self):
+        return self.signals.taskStatusUpdated
+
+    @property
+    def taskFinished(self):
+        return self.signals.taskFinished
+
+    @property
+    def failedTaskLogged(self):
+        return self.signals.failedTaskLogged
 
     # -------------------------------------------------------------------------
     # Public API

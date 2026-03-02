@@ -15,8 +15,6 @@ Core extensions module
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
-#
 from .CurlSslAntiDetectSession import installAntiDetectSession
 
 __all__ = ['installAntiDetectSession']

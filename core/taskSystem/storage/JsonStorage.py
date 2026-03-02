@@ -18,7 +18,6 @@ Stores data in a JSON file separate from the main application config.
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
 import json
 import os
 from threading import Lock

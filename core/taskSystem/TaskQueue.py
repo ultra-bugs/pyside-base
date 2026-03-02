@@ -18,8 +18,6 @@ Submits tasks to QThreadPool and handles task completion/retry.
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
-#
 from collections import deque
 from typing import Any, Dict, Optional
 
@@ -28,6 +26,7 @@ from PySide6 import QtCore
 from ..Config import Config
 from ..Logging import logger
 from .Exceptions import TaskNotFoundException
+from .signals.TaskQueueSignals import TaskQueueSignals
 from .storage.BaseStorage import BaseStorage
 from .TaskStatus import TaskStatus
 from .TaskTracker import TaskTracker
@@ -54,10 +53,8 @@ class TaskQueue(QtCore.QObject):
         taskDequeued: Emitted when a task starts execution
     """
 
-    # Qt Signals
-    queueStatusChanged = QtCore.Signal()  # Queue status changed
-    taskQueued = QtCore.Signal(str)  # uuid
-    taskDequeued = QtCore.Signal(str)  # uuid
+    # Signals are provided by TaskQueueSignals (composition).
+    # Proxy properties below for backward-compat.
 
     def __init__(self, taskTracker: TaskTracker, storage: BaseStorage, config: Config, maxConcurrentTasks: int = 3):
         """
@@ -69,6 +66,7 @@ class TaskQueue(QtCore.QObject):
             maxConcurrentTasks: Maximum number of concurrent tasks (default: 3)
         """
         super().__init__()
+        self.signals = TaskQueueSignals()
         self._taskTracker = taskTracker
         self._storage = storage
         self._config = config
@@ -84,6 +82,20 @@ class TaskQueue(QtCore.QObject):
         # Load persisted state
         self.loadState()
         logger.info(f'TaskQueue initialized with max concurrent tasks: {maxConcurrentTasks}')
+
+    # ── Signal proxy properties (backward-compat) ─────────────────────────────
+
+    @property
+    def queueStatusChanged(self):
+        return self.signals.queueStatusChanged
+
+    @property
+    def taskQueued(self):
+        return self.signals.taskQueued
+
+    @property
+    def taskDequeued(self):
+        return self.signals.taskDequeued
 
     def addTask(self, task: Any) -> None:
         """
@@ -245,9 +257,7 @@ class TaskQueue(QtCore.QObject):
         task.setStatus(TaskStatus.PENDING)
         task.error = None
         task.errorException = None
-        task._stopMutex.lock()
-        task._stopped = False
-        task._stopMutex.unlock()
+        task.taskState.reset()
         # Re-enqueue directly — task stays in tracker (already tracked)
         self._pendingTasks.append(task)
         self.queueStatusChanged.emit()

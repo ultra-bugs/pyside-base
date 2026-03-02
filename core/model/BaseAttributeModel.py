@@ -11,8 +11,6 @@
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
-#
 class BaseAttributeModel:
     def __init__(self, *args, **kw):
         # super().__init__(*args, **kw, box_dots=True, box_default_box_create_on_get=True)

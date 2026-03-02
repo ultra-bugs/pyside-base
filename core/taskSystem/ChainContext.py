@@ -18,8 +18,6 @@ Provides serialization support for persistence across application restarts.
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
-#
 import json
 import threading
 from typing import Any, Dict, Optional

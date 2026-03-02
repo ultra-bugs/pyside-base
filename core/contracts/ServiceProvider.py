@@ -1,4 +1,4 @@
-#                  M""""""`M            dP
+#                  M""""""""`M            dP
 #                  Mmmmmm   .M            88
 #                  MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
 #                  MMP  .MMMMM  88    88  88888"    88'  `88
@@ -11,7 +11,6 @@
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, List
 

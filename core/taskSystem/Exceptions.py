@@ -18,8 +18,6 @@ All exceptions inherit from ..Exceptions.AppException.
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
-#
 from ..Exceptions import AppException
 from ..Logging import logger
 

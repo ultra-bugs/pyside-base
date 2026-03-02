@@ -18,17 +18,18 @@ Provides common functionality, lifecycle management, and Qt signals integration.
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
 import abc
+import threading
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from PySide6 import QtCore
-from PySide6.QtCore import QMutex, QWaitCondition
 
 from ..Logging import logger
 from .Exceptions import TaskCancellationException
+from .signals.TaskSignals import TaskSignals
+from .TaskState import TaskState
 from .TaskStatus import TaskStatus
 from .UniqueType import UniqueType
 
@@ -37,13 +38,9 @@ if TYPE_CHECKING:
 logger = logger.bind(component='TaskSystem')
 
 
-class QObjectABCMeta(type(QtCore.QObject), abc.ABCMeta):
-    """
-    Metaclass that combines QObject's metaclass with ABCMeta.
 
-    This is necessary because both QObject and ABC have their own metaclasses,
-    and Python doesn't allow multiple metaclasses without explicit resolution.
-    """
+class QRunnableABCMeta(type(QtCore.QRunnable), abc.ABCMeta):
+    """Metaclass combining QRunnable's Shiboken metaclass with ABCMeta."""
 
     pass
 
@@ -52,7 +49,7 @@ class TaskFailedException(Exception):
     pass
 
 
-class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectABCMeta):
+class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
     """
     Abstract base class for all tasks in the TaskSystem.
 
@@ -79,10 +76,9 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         failSilently (bool): Whether to suppress error propagation
     """
 
-    statusChanged = QtCore.Signal(str, object)
-    progressUpdated = QtCore.Signal(str, int)
-    taskFinished = QtCore.Signal(str, object, object, object)  # uuid, self instance, result, error|None
-    # error object: {message: str - reason, exception: Exception instance}
+    # Signals are provided by TaskSignals (composition, not inheritance).
+    # Proxy properties below expose them as task.statusChanged / task.progressUpdated / task.taskFinished
+    # for backward compatibility — no consumer code changes needed.
 
     def __init__(
         self,
@@ -109,37 +105,37 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
             tags: Set of tags for categorizing the task
             uniqueType: Uniqueness constraint for the task
         """
-        QtCore.QObject.__init__(self)
-        # this is temporary fix for PyCharm debugger (pydevd)
-        import os
-        if not os.getenv('PYTHONUNBUFFERED', False):
-            QtCore.QRunnable.__init__(self)
+        QtCore.QRunnable.__init__(self)
+        # Standalone QObject for signal emission (decoupled from QRunnable C++ lifecycle)
+        self.signals = TaskSignals()
         self.uuid = uuid.uuid4().hex
         self.name = name
         self.description = description
         self.chainUuid = chainUuid
         self._chainContext: Optional['ChainContext'] = None
-        self.status = TaskStatus.PENDING
+        # Lifecycle state — single source of truth for status, cancellation, pause
+        self.taskState = TaskState(TaskStatus.PENDING)
         self.progress = 0
-        self.result: Optional[Any] = None
-        self.error: Optional[str] = None
-        self.errorException: Optional[Exception] = None
-        self.createdAt = datetime.now()
-        self.startedAt: Optional[datetime] = None
-        self.finishedAt: Optional[datetime] = None
         self.isPersistent = isPersistent
         self.maxRetries = maxRetries
         # Ensure >= 1
         self.retryDelaySeconds = max(int(retryDelaySeconds), 1)
         self.currentRetryAttempts = 0
         self.failSilently = failSilently
-        self._stopMutex = QMutex()
-        self._stopped = False
-        # Pause gate — Qt-native primitives (QMutex + QWaitCondition)
-        self._pauseMutex = QMutex()
-        self._pauseCondition = QWaitCondition()
-        self._isPaused = False
-        self._pauseCheckIntervalMs = 500
+        # autoDelete MUST remain False: taskFinished signal passes `self` as argument.
+        # QThreadPool deletes the C++ QRunnable after run() returns, but the signal
+        # is delivered via queued connection (cross-thread) AFTER deletion.
+        # Shiboken then invalidates the Python wrapper → AttributeError on access.
+        # Python GC handles cleanup when refs are dropped from _runningTasks.
+        self.setAutoDelete(False)
+        # Task execution result
+        self.result: Optional[Any] = None
+        self.error: Optional[str] = None
+        self.errorException: Optional[Exception] = None
+        # Timestamps
+        self.createdAt = datetime.now()
+        self.startedAt: Optional[datetime] = None
+        self.finishedAt: Optional[datetime] = None
         # Tags Management
         self.tags = tags if tags is not None else set()
         # Handle deserialization: tags might come as list from JSON
@@ -152,6 +148,23 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
 
     serializables: Optional[Any] = None
 
+    # ── Signal proxy properties (backward-compat) ─────────────────────────────
+
+    @property
+    def statusChanged(self):
+        """Proxy to ``self.signals.statusChanged``."""
+        return self.signals.statusChanged
+
+    @property
+    def progressUpdated(self):
+        """Proxy to ``self.signals.progressUpdated``."""
+        return self.signals.progressUpdated
+
+    @property
+    def taskFinished(self):
+        """Proxy to ``self.signals.taskFinished``."""
+        return self.signals.taskFinished
+
     def uniqueVia(self) -> str:
         """
         Define the unique key for the task.
@@ -160,14 +173,23 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         """
         return self.__class__.__name__
 
+    @property
+    def status(self) -> TaskStatus:
+        """Current TaskStatus enum (backward-compatible property)."""
+        return self.taskState.current
+
+    @status.setter
+    def status(self, value: TaskStatus) -> None:
+        """Direct assignment compat: ``task.status = TaskStatus.X``."""
+        self.taskState.transition(value)
+
     def setStatus(self, newStatus: TaskStatus) -> None:
         """
         Update task status and emit statusChanged signal.
         Args:
             newStatus: The new status to set
         """
-        oldStatus = self.status
-        self.status = newStatus
+        oldStatus = self.taskState.transition(newStatus)
         logger.debug(f'Task {self.uuid} status changed: {oldStatus.name} -> {newStatus.name}')
         self.statusChanged.emit(self.uuid, newStatus)
 
@@ -198,18 +220,13 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         Request task pause. Thread will block at next checkPaused() call.
         Only effective if handle() calls checkPaused() periodically.
         """
-        self._pauseMutex.lock()
-        self._isPaused = True
-        self._pauseMutex.unlock()
+        self.taskState.requestPause()
         self.setStatus(TaskStatus.PAUSED)
         logger.info(f'Task {self.uuid} paused')
 
     def resume(self) -> None:
         """Resume a paused task. Wakes the blocked thread."""
-        self._pauseMutex.lock()
-        self._isPaused = False
-        self._pauseCondition.wakeAll()
-        self._pauseMutex.unlock()
+        self.taskState.requestResume()
         self.setStatus(TaskStatus.RUNNING)
         logger.info(f'Task {self.uuid} resumed')
 
@@ -219,10 +236,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         Blocks the executing thread until resume() or cancel() is called.
         No-op if task is not paused.
         """
-        self._pauseMutex.lock()
-        while self._isPaused and not self.isStopped():
-            self._pauseCondition.wait(self._pauseMutex, self._pauseCheckIntervalMs)
-        self._pauseMutex.unlock()
+        self.taskState.waitIfPaused()
 
     def setChainContext(self, context: 'ChainContext') -> None:
         """
@@ -241,10 +255,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         Returns:
             True if stop was requested, False otherwise
         """
-        self._stopMutex.lock()
-        stopped = self._stopped
-        self._stopMutex.unlock()
-        return stopped
+        return self.taskState.isStopped()
 
     def cancel(self) -> None:
         """
@@ -253,14 +264,7 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         If task is PENDING or PAUSED, immediately transitions to CANCELLED.
         """
         logger.info(f'Cancelling task {self.uuid} - {self.name}')
-        self._stopMutex.lock()
-        self._stopped = True
-        self._stopMutex.unlock()
-        # Wake paused thread so it can detect stop and exit cleanly
-        self._pauseMutex.lock()
-        self._isPaused = False
-        self._pauseCondition.wakeAll()
-        self._pauseMutex.unlock()
+        self.taskState.requestCancel()
         if self.status in (TaskStatus.PENDING, TaskStatus.PAUSED):
             self.setStatus(TaskStatus.CANCELLED)
         try:
@@ -358,6 +362,14 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         """
         pass
 
+    def retryable(self) -> bool:
+        """
+        Return True if this task supports retry (maxRetries >= 1).
+        Used by TaskQueue to decide whether to re-enqueue on failure.
+        Override to return False for fire-and-forget tasks that never retry.
+        """
+        return self.maxRetries > 0
+
     @abc.abstractmethod
     def handle(self) -> None:
         """
@@ -389,6 +401,8 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
         - Emits taskFinished signal
         """
         self.startedAt = datetime.now()
+        _originalThreadName = threading.current_thread().name
+        threading.current_thread().name = self.uuid[:12]
         logger.info(f'Task {self.uuid} - {self.name} starting execution')
         try:
             self.setStatus(TaskStatus.RUNNING)
@@ -419,3 +433,4 @@ class AbstractTask(QtCore.QObject, QtCore.QRunnable, abc.ABC, metaclass=QObjectA
             logger.info(f'Task {self.uuid} finished in {duration:.2f}s with status {self.status.name}')
             err: Optional[Dict[str, str | Exception]] = {'message': self.error, 'exception': self.errorException} if self.error else None
             self.taskFinished.emit(self.uuid, self, self.result, err)
+            threading.current_thread().name = _originalThreadName

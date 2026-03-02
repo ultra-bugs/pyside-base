@@ -11,7 +11,6 @@
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
 from core.BaseController import BaseController
 from core.Config import Config
 from core.Exceptions import AppException, ConfigError, ExceptionHandler, ServiceError, UIError

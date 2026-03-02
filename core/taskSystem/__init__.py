@@ -24,8 +24,6 @@ All components follow Qt naming conventions (PascalCase for files/classes, camel
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
-#
 from ..Logging import logger
 
 # Initialize logger for TaskSystem
@@ -35,16 +33,19 @@ from .AbstractTask import AbstractTask
 from .ChainContext import ChainContext
 from .ChainRetryBehavior import ChainRetryBehavior
 from .Exceptions import InvalidTaskStateException, TaskCancellationException, TaskNotFoundException, TaskSystemException
+from .signals import TaskManagerSignals, TaskQueueSignals, TaskSchedulerSignals, TaskSignals, TaskTrackerSignals
 from .TaskChain import TaskChain
 from .TaskManagerService import TaskManagerService
 from .TaskQueue import TaskQueue
 from .TaskScheduler import TaskScheduler
 
 # Export main components (will be uncommented as they are implemented)
+from .TaskState import TaskState
 from .TaskStatus import TaskStatus
 from .TaskTracker import TaskTracker
 
 __all__ = [
+    'TaskState',
     'TaskStatus',
     'TaskSystemException',
     'TaskNotFoundException',
@@ -58,4 +59,9 @@ __all__ = [
     'TaskChain',
     'ChainContext',
     'ChainRetryBehavior',
+    'TaskSignals',
+    'TaskTrackerSignals',
+    'TaskQueueSignals',
+    'TaskSchedulerSignals',
+    'TaskManagerSignals',
 ]

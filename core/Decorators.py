@@ -11,12 +11,15 @@
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
+import time
 import traceback
 import typing
 from dataclasses import fields, is_dataclass
 from functools import wraps
+from typing import Any, Callable, ParamSpec, TypeVar
 
+P = ParamSpec('P')
+R = TypeVar('R')
 from PySide6 import QtCore, QtWidgets
 
 
@@ -95,13 +98,6 @@ def catchExceptInMsgBox(
             if reRaise:
                 raise
     return showExceptInMsgBox
-
-
-import time
-from typing import Any, Callable, ParamSpec, TypeVar
-
-P = ParamSpec('P')
-R = TypeVar('R')
 
 
 def cachedWithTtl(ttlMs: int) -> Callable[[Callable[P, R]], Callable[P, R]]:

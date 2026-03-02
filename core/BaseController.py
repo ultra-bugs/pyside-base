@@ -11,7 +11,6 @@
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
 import importlib
 from abc import ABC, abstractmethod
 from typing import Dict, List
@@ -19,6 +18,7 @@ from typing import Dict, List
 from box import Box
 from PySide6 import QtCore
 
+from core.QtAppContext import QtAppContext
 from core.Logging import logger
 from core.Observer import Publisher, Subscriber
 from core.WidgetManager import WidgetManager
@@ -61,9 +61,11 @@ class BaseController(metaclass=ControllerMeta):
         if isinstance(self, QDialog):
             from PySide6.QtCore import Qt
             self.setAttribute(Qt.WA_DeleteOnClose)
+        ctx = QtAppContext.globalInstance()
         self.widgetManager = WidgetManager(self)
         self.controllerName = self.__class__.__name__
-        self.publisher = Publisher()
+        self.publisher = ctx.publisher
+        # call setupUi from complied .ui file
         self.setupUi(self)
         if not self.is_auto_connect_signal:
             return
@@ -117,7 +119,7 @@ class BaseController(metaclass=ControllerMeta):
                     continue
                     pass
                 try:
-                    self.publisher.connect(self.widgetManager.get(t[0]), t[1], event, data={'widget_manager': self.widgetManager})
+                    self.publisher.connect(self.widgetManager.get(t[0]), t[1], event, data={'widgetManager': self.widgetManager})
                 except AttributeError:
                     wd = self.widgetManager.get(t[0])
                     from .Logging import logger

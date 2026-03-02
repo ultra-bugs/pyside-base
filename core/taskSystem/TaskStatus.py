@@ -17,8 +17,6 @@ Defines all possible states for a task in the TaskSystem.
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
-#
 from enum import Enum, auto
 
 from ..Logging import logger

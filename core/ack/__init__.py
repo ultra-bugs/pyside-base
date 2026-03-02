@@ -30,7 +30,6 @@ See docs/diagrams/task-acknowledgment-architecture.mermaid for full architecture
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
 from .AcknowledgmentReceiver import AcknowledgmentReceiver
 from .AcknowledgmentSender import AcknowledgmentSender
 
