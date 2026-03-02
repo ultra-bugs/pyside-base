@@ -38,7 +38,6 @@ if TYPE_CHECKING:
 logger = logger.bind(component='TaskSystem')
 
 
-
 class QRunnableABCMeta(type(QtCore.QRunnable), abc.ABCMeta):
     """Metaclass combining QRunnable's Shiboken metaclass with ABCMeta."""
 

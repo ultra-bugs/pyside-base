@@ -18,9 +18,9 @@ from typing import Dict, List
 from box import Box
 from PySide6 import QtCore
 
-from core.QtAppContext import QtAppContext
 from core.Logging import logger
 from core.Observer import Publisher, Subscriber
+from core.QtAppContext import QtAppContext
 from core.WidgetManager import WidgetManager
 
 

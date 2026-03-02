@@ -15,8 +15,6 @@ Tests for TaskManagerService.
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
-#
 from datetime import datetime, timedelta
 
 import pytest

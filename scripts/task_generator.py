@@ -13,8 +13,6 @@
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
-#
 """
 Task Generator - Wrapper script to easily create new tasks and steps.
 This script will:

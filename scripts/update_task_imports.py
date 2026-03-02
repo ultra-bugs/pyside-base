@@ -13,8 +13,6 @@
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
-#
 """
 Update the imports in the __init__.py files for tasks and task steps.
 This script should be run after creating new tasks or task steps to ensure they are importable.

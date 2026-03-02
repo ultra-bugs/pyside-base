@@ -578,12 +578,14 @@ class PathHelper:
         if PathHelperInternals.getPathIsSymlink(path_obj):
             return PathHelperInternals.get_path_resolve(path_obj)
         return None
+
     @staticmethod
     def appendToPythonPath(path):
         absPath = PathHelperInternals.get_path_resolve(path).absolute()
         if str(absPath) not in sys.path:
             sys.path.append(str(absPath))
         pass
+
     @staticmethod
     def isUsingSymlinkedCore() -> bool:
         """

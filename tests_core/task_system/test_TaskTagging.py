@@ -1,6 +1,7 @@
 """
 Tests for Bulk Action on Task Management.
 """
+
 #                  M""""""""`M            dP
 #                  Mmmmmm   .M            88
 #                  MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
@@ -14,9 +15,6 @@ Tests for Bulk Action on Task Management.
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
-#
-
 from core.taskSystem.TaskChain import TaskChain
 from core.taskSystem.TaskManagerService import TaskManagerService
 from tests_core.task_system.test_AbstractTask import ConcreteTask

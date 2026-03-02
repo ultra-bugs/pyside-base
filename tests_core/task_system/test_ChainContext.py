@@ -15,8 +15,6 @@ Tests for ChainContext class.
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
-#
 import json
 import threading
 

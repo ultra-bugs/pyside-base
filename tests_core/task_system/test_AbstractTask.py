@@ -15,7 +15,6 @@ Tests for AbstractTask base class.
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
 import pytest
 
 #

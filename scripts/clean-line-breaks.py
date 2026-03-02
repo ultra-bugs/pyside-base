@@ -12,31 +12,50 @@
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
 
-#
 import ast
+import ctypes
+import fnmatch
+import os
 import subprocess
 from pathlib import Path
 
+# ================= CONFIGURATION =================
+# Needle keywords (Không cần quan tâm khoảng trắng, script sẽ tự loại bỏ khi scan)
+NEEDLE_KEYWORD = 'MMMMMMMMMMM-*-CreatedbyZuko-*-'
+COMMENT_KEYWORD = '#'  # Đặt thành biến để dễ tái sử dụng cho ngôn ngữ khác (VD: '//')
+TARGET_EXT = '.py'
+
+# Hỗ trợ wildcard standard: '*' (mọi ký tự), '?' (1 ký tự), '[seq]'
+SKIP_DIR_NAMES = ['.*', 'data', 'assets', 'nghien_cuu_i9', '.pixi', '.env', '.cache']
+# =================================================
+
+
+def enable_win_vt100():
+    if os.name != 'nt':
+        return
+    # Lấy handle của STDOUT (-11)
+    kernel32 = ctypes.windll.kernel32
+    handle = kernel32.GetStdHandle(-11)
+    # Lấy Mode hiện tại
+    mode = ctypes.c_ulong()
+    kernel32.GetConsoleMode(handle, ctypes.byref(mode))
+    # Set cờ ENABLE_VIRTUAL_TERMINAL_PROCESSING (0x0004)
+    kernel32.SetConsoleMode(handle, mode.value | 0x0004)
+
+
+enable_win_vt100()
+
 
 def get_ruff_target_files():
-    """
-    Retrieves the list of files Ruff is configured to process.
-    Respects include, exclude, and .gitignore settings from pyproject.toml/ruff.toml.
-    """
     try:
-        # 'ruff check --show-files' returns the resolved list of files
         result = subprocess.check_output(['ruff', 'check', '--show-files'], text=True, stderr=subprocess.DEVNULL)
-        return [f.strip() for f in result.splitlines() if f.strip().endswith('.py')]
+        return [f.strip() for f in result.splitlines() if f.strip().endswith(TARGET_EXT)]
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
         print(f'Error: Could not invoke Ruff to get file list. {e}')
         return []
 
 
 def remove_empty_lines_in_scope(file_path):
-    """
-    Parses the file into an AST, identifies function/method boundaries,
-    and removes empty lines only within those ranges.
-    """
     path = Path(file_path)
     if not path.exists():
         return
@@ -48,98 +67,107 @@ def remove_empty_lines_in_scope(file_path):
     except SyntaxError:
         print(f'Syntax Error in {file_path}, skipping...')
         return
-    # Extract line ranges (start, end) for all function and method definitions
     function_ranges = []
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            # lineno points to the first decorator or 'def'
-            # end_lineno points to the last line of the body
             function_ranges.append((node.lineno, node.end_lineno))
     if not function_ranges:
         return
     optimized_lines = []
     for idx, line in enumerate(lines, start=1):
-        # Check if current line index falls within any function range
         is_inside_fn = any(start <= idx <= end for start, end in function_ranges)
-        # Remove line if it's inside a function AND is empty/whitespace only
-        if is_inside_fn and not line.strip():
+        # --- Bắt Junk Lines ---
+        stripped_nospace = ''.join(line.split())
+        is_junk = set(stripped_nospace).issubset({COMMENT_KEYWORD})
+        # Nếu nằm trong Function và là dòng rác (trống hoặc chỉ có #) -> Bỏ qua
+        if is_inside_fn and is_junk:
             continue
         optimized_lines.append(line)
-    # Write changes back only if the file content was modified
     if len(optimized_lines) != len(lines):
         with open(path, 'w', encoding='utf-8') as f:
             f.writelines(optimized_lines)
-        print(f'Modified: {file_path}')
-
-
-def main():
-    # 1. Standardize code via Ruff Format first
-    print('Step 1: Running Ruff Format...')
-    subprocess.run(['ruff', 'format', '.'], check=False)
-    # 2. Get the list of files Ruff actually cares about
-    print('Step 2: Syncing with Ruff file list...')
-    target_files = get_ruff_target_files()
-    if not target_files:
-        print('No files to process.')
-        return
-    # 3. Apply the AST-based empty line removal
-    print(f'Step 3: Processing {len(target_files)} files...')
-    for file_path in target_files:
-        remove_empty_lines_in_scope(file_path)
-    print('Pipeline finished successfully.')
-
-
-import fnmatch
-import os
-
-# ================= CONFIGURATION =================
-TRIGGER_LINE = '#              * * * * * * * * * * * * * * * * * * * * *'
-TARGET_EXT = '.py'
-
-# Hỗ trợ wildcard standard: '*' (mọi ký tự), '?' (1 ký tự), '[seq]'
-# '.*' sẽ match các folder ẩn như .git, .idea, .venv, etc.
-SKIP_DIR_NAMES = ['.*', 'data', 'assets', 'nghien_cuu_i9']
-# =================================================
+        print(f'\033[32m[AST CLEANED]\033[0m {file_path}')
 
 
 def clean_file(filepath):
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             lines = f.readlines()
-        trigger_indices = [i for i, line in enumerate(lines) if TRIGGER_LINE in line]
-        if not trigger_indices:
+        # 1. Quét tìm tất cả các block bản quyền (bằng cách xoá sạch khoảng trắng để so sánh)
+        needle_indices = []
+        for i, line in enumerate(lines):
+            stripped_nospace = ''.join(line.split())
+            if stripped_nospace.startswith(COMMENT_KEYWORD) and NEEDLE_KEYWORD in stripped_nospace:
+                needle_indices.append(i)
+        if not needle_indices:
             return
-        last_trigger_idx = trigger_indices[-1]  # Lấy dòng border dưới cùng
-        # Phần giữ lại (Header gốc)
-        new_content = lines[: last_trigger_idx + 1]
-        # Phần cần scan (từ ngay sau header trở đi)
-        scan_content = lines[last_trigger_idx + 1 :]
+        modified = False
+        # --- Helper: Tìm biên Trên/Dưới của 1 block bản quyền để không ăn nhầm comment code ---
+        def get_block_bounds(n_idx):
+            start_idx = n_idx
+            # Dò ngược lên trên tối đa 15 lines để tìm biên trên M""""""""`M
+            for i in range(n_idx, max(-1, n_idx - 15), -1):
+                s = ''.join(lines[i].split())
+                if s.startswith(COMMENT_KEYWORD) and 'M""""""""`M' in s:
+                    start_idx = i
+                    break
+            else:  # Fallback
+                while start_idx > 0 and lines[start_idx - 1].lstrip().startswith(COMMENT_KEYWORD):
+                    start_idx -= 1
+            end_idx = n_idx
+            borders_seen = 0
+            # Dò xuống dưới tối đa 15 lines. Biên dưới chuẩn sẽ đi qua 2 lines chứa rất nhiều dấu *
+            for i in range(n_idx, min(len(lines), n_idx + 15)):
+                s = lines[i].strip()
+                if s.startswith(COMMENT_KEYWORD) and s.count('*') > 10:
+                    borders_seen += 1
+                    end_idx = i
+                    if borders_seen == 2:  # Border chốt sổ dưới cùng
+                        break
+            else:  # Fallback
+                while end_idx < len(lines) - 1 and lines[end_idx + 1].lstrip().startswith(COMMENT_KEYWORD):
+                    end_idx += 1
+            return start_idx, end_idx
+        # 2. Xử lý Remove Duplicate Blocks (Xoá từ dưới lên để không làm lệch Index)
+        if len(needle_indices) > 1:
+            for idx in reversed(needle_indices[1:]):
+                start_idx, end_idx = get_block_bounds(idx)
+                del lines[start_idx : end_idx + 1]
+                modified = True
+                print(f'\033[33m[DUPLICATE CLEANED]\033[0m {filepath} - Removed duplicate block (lines {start_idx + 1}-{end_idx + 1}).')
+        # 3. Clean Junk Lines (chỉ áp dụng sát đít Primary Block đầu tiên)
+        first_needle_idx = needle_indices[0]
+        _, first_end_idx = get_block_bounds(first_needle_idx)
+        new_content = lines[: first_end_idx + 1]
+        scan_content = lines[first_end_idx + 1 :]
         skip_count = 0
         final_part_idx = 0
         found_code = False
         for i, line in enumerate(scan_content):
-            stripped = line.strip()
-            # Logic: Nếu gặp dòng trống hoặc chỉ có dấu # thì coi là rác
-            if stripped == '' or stripped == '#':
+            # --- [MẠNH TAY] Bắt Junk Lines ---
+            stripped_nospace = ''.join(line.split())
+            is_junk = set(stripped_nospace).issubset({COMMENT_KEYWORD})
+            if is_junk:
                 skip_count += 1
-                continue
             else:
-                # Đã va phải code hoặc comment xịn
                 final_part_idx = i
                 found_code = True
                 break
         if found_code:
             new_content.extend(scan_content[final_part_idx:])
         if skip_count > 0:
+            lines = new_content
+            modified = True
+            print(f'\033[32m[JUNK CLEANED]\033[0m {filepath} - Removed {skip_count} junk lines after header.')
+        # 4. Ghi file nếu có bất kỳ sự thay đổi nào
+        if modified:
             with open(filepath, 'w', encoding='utf-8') as f:
-                f.writelines(new_content)
-            print(f'[CLEANED] {filepath} - Removed {skip_count} junk lines.')
+                f.writelines(lines)
     except Exception as e:
-        print(f'[ERROR] {filepath}: {e}')
+        print(f'[\033[32m[ERROR]\033[0m  {filepath}: {e}')
 
 
 def is_skipped_dir(dirname):
-    """Kiểm tra xem tên thư mục có khớp với pattern nào trong SKIP list không"""
     for pattern in SKIP_DIR_NAMES:
         if fnmatch.fnmatch(dirname, pattern):
             return True
@@ -148,12 +176,8 @@ def is_skipped_dir(dirname):
 
 def main2():
     root_dir = '.'
-    print(f'Scanning for {TARGET_EXT} files (Skipping: {SKIP_DIR_NAMES})...')
-    # topdown=True là bắt buộc để có thể sửa đổi list 'dirs' in-place
+    print(f'-- Scanning for {TARGET_EXT} files (Skipping: {SKIP_DIR_NAMES})...')
     for root, dirs, files in os.walk(root_dir, topdown=True):
-        # --- LOGIC PRUNING FOLDER ---
-        # Sửa đổi list 'dirs' ngay lập tức để os.walk không đi vào các thư mục này
-        # Dùng kỹ thuật list comprehension slice [:] để thay đổi chính object list đang duyệt
         dirs[:] = [d for d in dirs if not is_skipped_dir(d)]
         for file in files:
             if file.endswith(TARGET_EXT):
@@ -163,6 +187,22 @@ def main2():
                 clean_file(full_path)
 
 
+def main():
+    enable_win_vt100()
+    print('\n\nStep 1: Running Ruff Format...')
+    subprocess.run(['ruff', 'format', '.'], check=False)
+    print('\n\nStep 2: Syncing with Ruff file list...')
+    target_files = get_ruff_target_files()
+    if not target_files:
+        print('No files to process via Ruff.')
+    else:
+        print(f'\n\nStep 3: Processing {len(target_files)} files (AST Empty lines scope)...')
+        for file_path in target_files:
+            remove_empty_lines_in_scope(file_path)
+    print('\n\nStep 4: Running Copyright Header & Junk line cleaner...')
+    main2()
+    print('\n\nPipeline finished successfully.')
+
+
 if __name__ == '__main__':
     main()
-    main2()

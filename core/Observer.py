@@ -38,8 +38,9 @@ class Publisher:
     def globalInstance():
         """Alias of Publisher.instance()"""
         return Publisher.instance()
-    
+
     _isInited = False
+
     def __init__(self):
         if Publisher._isInited:
             return
@@ -47,6 +48,7 @@ class Publisher:
         self.eventSpecificSubscribers = {}
         self._lock = QMutex()
         Publisher._isInited = True
+
     def subscribe(self, subscriber, event: Optional[str] = None) -> 'Publisher':
         """Subscribe to all events or a specific event"""
         locker = QMutexLocker(self._lock)
@@ -75,7 +77,6 @@ class Publisher:
     def notify(self, event: str, *args, **kwargs) -> 'Publisher':
         """Notify subscribers of an event"""
         from .Logging import logger
-
         locker = QMutexLocker(self._lock)
         globalSubscribers = self.globalSubscribers.copy()
         eventSubscribers = self.eventSpecificSubscribers.get(event, []).copy()
@@ -95,7 +96,6 @@ class Publisher:
         slot = getattr(widget, signalName, None)
         if slot is None:
             from core.Logging import logger
-
             logger.error(f"Signal '{signalName}' not found on widget '{widget.__class__.__name__}'")
             return self
         slot.connect(lambda *s_args, **signalKwargs: self.notify(event, *[*args, *s_args], **{**kwargs, **signalKwargs}))
@@ -115,7 +115,6 @@ class Subscriber:
     def update(self, event: str, *args, **kwargs):
         """Handle an event using smart parameter injection with type hint priority"""
         from caseconverter import pascalcase
-
         method_name = f'on{pascalcase(event)}'
         sig = None
         if hasattr(self, method_name):
@@ -196,15 +195,12 @@ class Subscriber:
             except RuntimeError as e:
                 if 'signal' in str(e).lower():
                     from .Logging import logger
-
                     logger.opt(exception=e).exception(f'RuntimeError in event handler: {self.__class__.__name__}.{method_name}')
                     return
                 raise
             except Exception as e:
                 from .Logging import logger
-
                 logger.opt(exception=e).exception(f'Exception in event handler: {self.__class__.__name__}.{method_name}')
                 from .Exceptions import ExceptionHandler
-
                 handler = ExceptionHandler()
                 handler.handleException(e)

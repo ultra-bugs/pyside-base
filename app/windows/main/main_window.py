@@ -13,8 +13,6 @@
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
-################################################################################
 ## Form generated from reading UI file 'main_window.ui'
 ##
 ##

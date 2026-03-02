@@ -3,10 +3,6 @@ Enhanced Method Name Normalizer Script
 Chuẩn hóa toàn bộ tên method, parameter, variable thành camelCase cho các file Python
 """
 
-import ast
-import keyword
-import logging
-
 #                  M""""""""`M            dP
 #                  Mmmmmm   .M            88
 #                  MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
@@ -20,6 +16,9 @@ import logging
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
+import ast
+import keyword
+import logging
 import os
 import pathlib
 import re

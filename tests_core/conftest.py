@@ -20,7 +20,6 @@ This file provides:
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
