@@ -1,0 +1,55 @@
+%% Task Acknowledgment Mechanism - Layered Architecture
+%% Kiến trúc phân tầng: Core Protocol -> Application -> Concrete
+
+graph TB
+    subgraph "Layer 1 - Core ACK/NACK Protocol"
+        Tracker[AcknowledgmentTracker<br/>Điều phối ack/nack]
+        Sender[AcknowledgmentSender<br/>Interface: send_ack/send_nack]
+        Receiver[AcknowledgmentReceiver<br/>Interface: emit_with_ack/wait_for_acks]
+    end
+
+    subgraph "Layer 2 - Application Layer"
+        TaskServiceBase[TaskServiceWithAck<br/>extends Receiver<br/>Generic reusable service]
+        HandlerServiceBase[HandlerServiceWithAck<br/>extends Sender + Subscriber<br/>Generic event handler]
+    end
+
+    subgraph "Layer 3 - Concrete Implementation"
+        VndAuth[VndAuthService<br/>extends TaskServiceWithAck<br/>+ Browser management]
+        VndAuto[VndAutomationService<br/>extends HandlerServiceWithAck<br/>+ API operations]
+        Browser[Browser Process<br/>Managed by VndAuthService]
+        API[BetMateApiService<br/>Used by VndAutomationService]
+    end
+
+    %% Layer 1 internal
+    Receiver -->|uses| Tracker
+    Sender -->|uses| Tracker
+    Tracker -->|coordinates| Sender
+    Tracker -->|coordinates| Receiver
+
+    %% Layer 1 -> Layer 2
+    Receiver -.->|base for| TaskServiceBase
+    Sender -.->|base for| HandlerServiceBase
+
+    %% Layer 2 -> Layer 3
+    TaskServiceBase -.->|base for| VndAuth
+    HandlerServiceBase -.->|base for| VndAuto
+
+    %% Layer 3 dependencies
+    VndAuth -->|manages| Browser
+    VndAuto -->|uses| API
+
+    %% Runtime flow
+    VndAuth -->|emit_with_ack| Tracker
+    Tracker -->|notify| VndAuto
+    VndAuto -->|send_ack| Tracker
+    Tracker -->|callback| VndAuth
+
+    style Tracker fill:#28a745,color:#fff
+    style Sender fill:#17a2b8,color:#fff
+    style Receiver fill:#17a2b8,color:#fff
+    style TaskServiceBase fill:#fff3cd
+    style HandlerServiceBase fill:#fff3cd
+    style VndAuth fill:#e1f5ff
+    style VndAuto fill:#d4edda
+    style Browser fill:#ffc107
+    style API fill:#f8d7da

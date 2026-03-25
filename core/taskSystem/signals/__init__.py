@@ -12,4 +12,10 @@ from .TaskSchedulerSignals import TaskSchedulerSignals
 from .TaskSignals import TaskSignals
 from .TaskTrackerSignals import TaskTrackerSignals
 
-__all__ = ['TaskSignals', 'TaskTrackerSignals', 'TaskQueueSignals', 'TaskSchedulerSignals', 'TaskManagerSignals']
+__all__ = [
+    'TaskSignals',
+    'TaskTrackerSignals',
+    'TaskQueueSignals',
+    'TaskSchedulerSignals',
+    'TaskManagerSignals',
+]

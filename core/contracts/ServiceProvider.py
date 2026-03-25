@@ -62,11 +62,21 @@ class ServiceProvider(ABC):
         Use ``self.ctx.registerService(name, instance)`` here.
         """
         pass
-
+    
+    # @abstractmethod
     def boot(self):
         """Optional post-registration hook.
         Called after **all** providers have completed ``register()``.
         Use this when you need to wire services that depend on other
         providers already being registered.
+        """
+        pass
+    
+    # @abstractmethod
+    def booted(self):
+        """Optional hook executed after the application is fully bootstrapped.
+        Called when the event loop is active and the application is ready.
+        Ideal for heavy initialization, starting background timers, or
+        network connections that shouldn't block the application startup.
         """
         pass

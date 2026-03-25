@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 logger = logger.bind(component='TaskSystem')
 
 
+
 class QRunnableABCMeta(type(QtCore.QRunnable), abc.ABCMeta):
     """Metaclass combining QRunnable's Shiboken metaclass with ABCMeta."""
 
@@ -192,15 +193,16 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
         logger.debug(f'Task {self.uuid} status changed: {oldStatus.name} -> {newStatus.name}')
         self.statusChanged.emit(self.uuid, newStatus)
 
-    def setProgress(self, value: int) -> None:
+    def setProgress(self, value: int, label: str = '') -> None:
         """
         Update task progress and emit progressUpdated signal.
         Args:
             value: Progress percentage (0-100)
+            label: Optional label describing the current progress step
         """
         self.progress = max(0, min(100, value))
         logger.debug(f'Task {self.uuid} progress: {self.progress}%')
-        self.progressUpdated.emit(self.uuid, self.progress)
+        self.progressUpdated.emit(self.uuid, self.progress, label)
 
     def addTag(self, tag: str) -> None:
         """Add a tag to the task."""
@@ -247,7 +249,8 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
         """
         self._chainContext = context
         logger.debug(f'Task {self.uuid} received chain context from chain {context._chainUuid}')
-
+    def getChainContext(self) -> 'ChainContext':
+        return self._chainContext
     def isStopped(self) -> bool:
         """
         Check if task has been requested to stop.
@@ -317,14 +320,18 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
         }
         coreKeys = set(data.keys())
         def _to_serializable(v: Any) -> Any:
+            mappedInstances = {TaskStatus: 'name', TaskState: 'name', UniqueType: 'name'}
+            for ins in mappedInstances.keys():
+                if isinstance(v, ins):
+                    return getattr(v, mappedInstances[ins])
+            if hasattr(v, 'toDict') and callable(v.toDict):
+                return v.toDict()
+            if hasattr(v, 'to_dict') and callable(v.to_dict):
+                return v.to_dict()
             if isinstance(v, Exception):
                 return v.__class__.__name__ + ': ' + str(v)
             if isinstance(v, datetime):
                 return v.isoformat()
-            if isinstance(v, TaskStatus):
-                return v.name
-            if isinstance(v, UniqueType):
-                return v.name
             if callable(v):
                 raise TypeError('Cannot serialize callable')
             return v
@@ -340,6 +347,14 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
         else:
             for k, v in self.__dict__.items():
                 if k.startswith('_') or k in coreKeys:
+                    continue
+                # Skip Qt objects (signals, QObject subclasses).
+                # Guard with try/except: Shiboken raises RuntimeError when accessing
+                # isinstance() on a QObject whose C++ side has been destroyed.
+                try:
+                    if isinstance(v, QtCore.QObject):
+                        continue
+                except RuntimeError:
                     continue
                 try:
                     extras[k] = _to_serializable(v)
@@ -388,6 +403,13 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
         Should clean up resources (close files, kill processes, etc.)
         """
         pass
+    
+    def getThreadNameForCurrentTask(self):
+        # Sub-Task in chain will have same thead name
+        if self._chainContext is not None and self._chainContext.get('_threadName') is not None:
+            return str(self._chainContext.get('_threadName'))
+            # TODO: add sub-task name
+        return self.uuid[:12] if not self.name else f'{self.name}::{self.uuid[:6]}'
 
     def run(self) -> None:
         """
@@ -400,8 +422,9 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
         - Emits taskFinished signal
         """
         self.startedAt = datetime.now()
+        # Change thread name in logging
         _originalThreadName = threading.current_thread().name
-        threading.current_thread().name = self.uuid[:12]
+        threading.current_thread().name = self.getThreadNameForCurrentTask()
         logger.info(f'Task {self.uuid} - {self.name} starting execution')
         try:
             self.setStatus(TaskStatus.RUNNING)

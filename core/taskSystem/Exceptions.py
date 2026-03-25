@@ -24,24 +24,19 @@ from ..Logging import logger
 # Initialize logger for TaskSystem
 logger = logger.bind(component='TaskSystem')
 
-
-class TaskFailedException(Exception):
-    pass
-
-
-class TaskUniqueViolationException(Exception):
-    """Raised when a unique task constraint is violated."""
-
-    pass
-
-
 class TaskSystemException(AppException):
     """
-    Base exception for all TaskSystem-related errors.
-    """
+    Base exception for all TaskSystem-related errors."""
 
     pass
 
+class TaskFailedException(TaskSystemException):
+    pass
+
+
+class TaskUniqueViolationException(TaskSystemException):
+    """Raised when a unique task constraint is violated."""
+    pass
 
 class TaskNotFoundException(TaskSystemException):
     """
@@ -96,39 +91,3 @@ class TaskCancellationException(TaskSystemException):
         if message is None:
             message = f"Task '{uuid}' was cancelled"
         super().__init__(message)
-
-
-class PermanentTaskFailure(Exception):
-    """
-    Exception for permanent task failures that should NOT be retried.
-    e.g. IP already claimed, raffle expired.
-    """
-
-    def __init__(self, error_code: str = None, message: str = 'PermanentTaskFailure', should_retry: bool = False, metadata: dict = None):
-        self.error_code = error_code or 'error.code.na'
-        self.message = message
-        self.should_retry = should_retry
-        self.metadata = metadata or {}
-        super().__init__(f'[{self.error_code}] {message}')
-
-    def __str__(self) -> str:
-        base_msg = f'[{self.error_code}] {self.message}'
-        if self.metadata:
-            metadata_str = ', '.join(f'{k}={v}' for k, v in self.metadata.items())
-            return f'{base_msg} ({metadata_str})'
-        return base_msg
-
-
-class LoginError(Exception):
-    """
-    Exception for login failures reported to UI.
-    Raised when LoginAndGetTokenStep fails after all retries.
-    """
-
-    def __init__(self, error_code: str, message: str, retry_count: int = 0, should_retry: bool = False, metadata: dict = None):
-        self.error_code = error_code
-        self.message = message
-        self.retry_count = retry_count
-        self.should_retry = should_retry
-        self.metadata = metadata or {}
-        super().__init__(f'[{error_code}] {message}')

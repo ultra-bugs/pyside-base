@@ -13,7 +13,11 @@
 #                  * * * * * * * * * * * * * * * * * * * * *
 import os
 import sys
-from typing import Any, Optional, Self, Union
+from typing import Any, Optional, Self, Union, Type, TypeVar
+
+T = TypeVar('T')
+
+from core.SharedCollection import SharedCollection
 
 from PySide6.QtNetwork import QNetworkAccessManager
 
@@ -24,7 +28,7 @@ try:
     from dotenv import load_dotenv
 except ImportError:
     load_dotenv = None
-from PySide6.QtCore import QCoreApplication, QMutex, QMutexLocker, QObject, Signal, Slot
+from PySide6.QtCore import QCoreApplication, QMutex, QMutexLocker, QObject, QTimer, Signal, Slot
 from PySide6.QtWidgets import QApplication
 
 from core.Config import Config
@@ -67,10 +71,13 @@ class QtAppContext(QObject):
         super().__init__()
         self._app: Union[QApplication, QCoreApplication] = QApplication.instance() or QApplication(sys.argv)
         self._isBootstrapped = False
+        self._isServiceProviderRegistered = False
         self.loop = None  # qasync QEventLoop, set during bootstrap()
         self._bootstrapLock = QMutex()
         self._sharedState: dict[str, Any] = {}
         self._stateLock = QMutex()
+        self._sharedCollections: dict[str, SharedCollection] = {}
+        self._collectionLock = QMutex()
         self._services = ServiceLocator()
         self._config: Optional[Config] = None
         self._publisher: Optional[Publisher] = None
@@ -163,6 +170,7 @@ class QtAppContext(QObject):
             self._publisher.notify('app.ready')
             self.appReady.emit()
             self._schedulePostBootInit()
+            self._isServiceProviderRegistered = True
             logger.info('Application Context Ready.')
             return self
 
@@ -224,7 +232,7 @@ class QtAppContext(QObject):
             cycle = set(providerClasses) - set(sortedNames)
             msg = f'Circular dependency detected among providers: {cycle}'
             logger.error(f'[Providers] {msg}')
-            WidgetUtils.showAlertMsgBox(title='Provider Dependency Error', msg=msg)
+            WidgetUtils.showAlertMsgBox(None, title='Provider Dependency Error', msg=msg)
             # Still load what we can
             for name in providerClasses:
                 if name not in sortedNames:
@@ -249,7 +257,7 @@ class QtAppContext(QObject):
                 failedProviders.add(name)
                 msg = f'Provider {name}.register() failed: {e}'
                 logger.error(f'[Providers] {msg}')
-                WidgetUtils.showAlertMsgBox(title='Provider Registration Error', msg=msg)
+                WidgetUtils.showAlertMsgBox(None, title='Provider Registration Error', msg=msg)
         # --- Phase 3: boot() ---
         for name in sortedNames:
             instance = providerInstances.get(name)
@@ -257,12 +265,22 @@ class QtAppContext(QObject):
                 continue
             try:
                 instance.boot()
+                self._timeoutUtilBootstrapped(instance)
             except Exception as e:
                 msg = f'Provider {name}.boot() failed: {e}'
                 logger.error(f'[Providers] {msg}')
-                WidgetUtils.showAlertMsgBox(title='Provider Boot Error', msg=msg)
+                WidgetUtils.showAlertMsgBox(None, title='Provider Boot Error', msg=msg)
         logger.info(f'[Providers] Loaded {len(providerInstances)}/{len(PROVIDERS)} providers.')
-
+    def _timeoutUtilBootstrapped(self, serviceInstance):
+        if not self._isServiceProviderRegistered:
+            QTimer.singleShot(500, lambda: self._timeoutUtilBootstrapped(serviceInstance))
+            return
+        print(serviceInstance)
+        if hasattr(serviceInstance, 'booted'):
+            try:
+                serviceInstance.booted()
+            except:
+                raise
     def getMainWindowCtl(self):
         for widget in self._app.topLevelWidgets():
             if type(widget).__name__ == 'MainController':
@@ -283,21 +301,35 @@ class QtAppContext(QObject):
         self.appClosing.emit()
         if self._publisher:
             self._publisher.notify('app.shutdown')
+            self._publisher.stop()
         logger.info('Application shutting down.')
 
-    def registerService(self, name: str, instance: Any) -> Self:
-        """Register a global service."""
-        self._services.register(name, instance)
+    def registerService(self, nameOrInstance: Union[str, Type, Any], instance: Any = None) -> 'Self':
+        """Register a global service.
+
+        Overloads:
+            registerService(instance)           → key = FQN of type(instance)
+            registerService(MyClass, instance)  → key = FQN of MyClass
+            registerService('my_key', instance) → key = 'my_key'  (legacy)
+        """
+        if instance is None:
+            self._services.register(nameOrInstance)
+        else:
+            self._services.register(nameOrInstance, instance)
         return self
 
-    def getService(self, name: str) -> Any:
-        """Get a registered service."""
-        return self._services.get(name)
+    def getService(self, nameOrType: Union[str, Type[T]], default: Any = None) -> Optional[T]:
+        """Get a registered service by string key or class."""
+        return self._services.get(nameOrType, default)
 
-    def registerScopedService(self, tag: str, instance: Any) -> Self:
+    def registerScopedService(self, tag: str, instance: Any) -> 'Self':
         """Register a scoped service (linked to a Job/Task UUID)."""
         self._services.registerScoped(tag, instance)
         return self
+
+    def getScopedServiceByType(self, tag: str, cls: Type[T]) -> Optional[T]:
+        """Get the first scoped service of a given class under a tag."""
+        return self._services.getScopedByType(tag, cls)
 
     def releaseScope(self, tag: str) -> Self:
         """Cleanup all services associated with a tag."""
@@ -336,3 +368,33 @@ class QtAppContext(QObject):
     def getState(self, key: str, default: Any = None) -> Any:
         with QMutexLocker(self._stateLock):
             return self._sharedState.get(key, default)
+
+    # ------------------------------------------------------------------
+    # SharedCollection management
+    # ------------------------------------------------------------------
+
+    def getCollection(self, key: str, itemType: Optional[Type[T]] = None) -> SharedCollection:
+        """Return (or lazily create) a SharedCollection by key.
+
+        Args:
+            key: Unique name for the collection (e.g. 'activeTasks').
+            itemType: Optional type hint — purely documentary, not enforced at runtime.
+
+        Returns:
+            The SharedCollection registered under *key*.
+        """
+        with QMutexLocker(self._collectionLock):
+            if key not in self._sharedCollections:
+                self._sharedCollections[key] = SharedCollection()
+            return self._sharedCollections[key]
+
+    def hasCollection(self, key: str) -> bool:
+        """Return True if a SharedCollection is registered under *key*."""
+        with QMutexLocker(self._collectionLock):
+            return key in self._sharedCollections
+
+    def removeCollection(self, key: str) -> 'QtAppContext':
+        """Unregister and discard the SharedCollection at *key*."""
+        with QMutexLocker(self._collectionLock):
+            self._sharedCollections.pop(key, None)
+        return self

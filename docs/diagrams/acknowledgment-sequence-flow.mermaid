@@ -1,0 +1,46 @@
+%% Sequence Diagram - Core ACK/NACK Protocol Flow
+%% Luồng cơ bản của protocol, không phụ thuộc vào browser hay API cụ thể
+
+sequenceDiagram
+    participant Receiver as AcknowledgmentReceiver
+    participant Tracker as AcknowledgmentTracker
+    participant Sender as AcknowledgmentSender
+
+    Note over Receiver,Sender: Phase 1: Registration
+    Receiver->>Receiver: generate_ack_id()
+    Receiver->>Tracker: register_pending(ack_id, callback, timeout)
+    Note right of Tracker: Tracker starts timeout timer
+
+    Note over Receiver,Sender: Phase 2: Event Emission
+    Receiver->>Sender: emit_event(data, ack_id)
+    Note right of Receiver: Receiver enters waiting state
+
+    Note over Receiver,Sender: Phase 3: Processing (Sender's responsibility)
+    Sender->>Sender: process_event(data)
+    Note right of Sender: Application-specific logic<br/>e.g., POST API, save DB, etc.
+
+    Note over Receiver,Sender: Phase 4: Success Acknowledgment
+    Sender->>Tracker: send_acknowledgment(ack_id, result)
+    Tracker->>Tracker: remove from pending
+    Tracker->>Receiver: callback(ack_id, result)
+    Note right of Receiver: Receiver can proceed
+
+    Note over Receiver,Sender: Error Path 1: Processing Failed
+    alt Processing Error
+        Sender->>Tracker: send_error_acknowledgment(ack_id, error)
+        Tracker->>Receiver: error_callback(ack_id, error)
+    end
+
+    Note over Receiver,Sender: Error Path 2: Timeout
+    alt Timeout Expired
+        Tracker->>Tracker: timeout detected
+        Tracker->>Receiver: timeout_callback(ack_id)
+        Note right of Receiver: Receiver handles timeout
+    end
+
+    Note over Receiver,Sender: Phase 5: Wait for All (Multiple Events)
+    Receiver->>Tracker: wait_for_acknowledgments(timeout)
+    loop Check pending
+        Tracker->>Tracker: pending_count > 0?
+    end
+    Tracker-->>Receiver: all_acknowledged or timeout

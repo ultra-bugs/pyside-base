@@ -578,14 +578,12 @@ class PathHelper:
         if PathHelperInternals.getPathIsSymlink(path_obj):
             return PathHelperInternals.get_path_resolve(path_obj)
         return None
-
     @staticmethod
     def appendToPythonPath(path):
         absPath = PathHelperInternals.get_path_resolve(path).absolute()
         if str(absPath) not in sys.path:
             sys.path.append(str(absPath))
         pass
-
     @staticmethod
     def isUsingSymlinkedCore() -> bool:
         """
@@ -658,6 +656,10 @@ class OsHelper:
 
 
 class PythonHelper:
+    @staticmethod
+    def dataGet(ins: Any, key:str, defaults: Any = None) -> Any:
+        if hasattr(ins, '__dict__'):
+            dictIns = ins.__dict__()
     @staticmethod
     def is_type_compatible(value, annotation):
         try:
@@ -811,6 +813,7 @@ class PythonHelper:
     def generateRandomString(length: int = 8) -> str:
         import random
         import string
+
         characters = string.ascii_letters + string.digits
         return ''.join((random.choice(characters) for _ in range(length)))
 
@@ -829,9 +832,67 @@ class PythonHelper:
             result = PythonHelper.Async2Sync(myAsyncFunction())
         """
         import asyncio
+
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(coro)
 
+
+from typing import Any, Dict
+
+
+class DictHelper:
+    """High-performance utility for dictionary operations"""
+
+    @staticmethod
+    def dotGet(data: Dict[str, Any], path: str, defaultValue: Any = None) -> Any:
+        if not isinstance(data, dict) or not path:
+            return defaultValue
+
+        for key in path.split('.'):
+            if isinstance(data, dict) and key in data:
+                data = data[key]
+            else:
+                return defaultValue
+
+        return data
+
+    @staticmethod
+    def dotSet(data: Dict[str, Any], path: str, value: Any) -> Dict[str, Any]:
+        if not isinstance(data, dict) or not path:
+            return data
+
+        keys = path.split('.')
+        current = data
+
+        for key in keys[:-1]:
+            if key not in current or not isinstance(current[key], dict):
+                current[key] = {}
+            current = current[key]
+
+        current[keys[-1]] = value
+        return data
+    
+    @staticmethod
+    def merge(*args: Dict[str, Any]) -> Dict[str, Any]:
+        """Deep merge dicts. Order: Left to Right (Last overrides First)"""
+        result = {}
+        
+        for currentDict in args:
+            if not isinstance(currentDict, dict):
+                continue
+            
+            stack = [(result, currentDict)]
+            while stack:
+                target, source = stack.pop()
+                for key, value in source.items():
+                    if isinstance(value, dict):
+                        if key not in target or not isinstance(target[key], dict):
+                            target[key] = {}
+                        stack.append((target[key], value))
+                    else:
+                        target[key] = value
+        
+        return result
 
 def isInDebugEnv() -> bool:
     """

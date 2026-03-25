@@ -77,6 +77,7 @@ class TaskChain(AbstractTask, Subscriber):
         self._chainRetryAttempts = 0
         self._progress_updated_externally = False
         logger.info(f'TaskChain created: {self.uuid} - {self.name} with {len(tasks)} tasks')
+        self._chainContext.set('_threadName', self.getThreadNameForCurrentTask())
 
     def onChainProgressUpdateRequest(self, data: Optional[Dict[str, Any]] = None) -> None:
         """

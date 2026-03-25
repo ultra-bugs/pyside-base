@@ -20,5 +20,5 @@ class TaskSignals(QtCore.QObject):
     """
 
     statusChanged = QtCore.Signal(str, object)
-    progressUpdated = QtCore.Signal(str, int)
+    progressUpdated = QtCore.Signal(str, int, str)  # uuid, progress, label (default '')
     taskFinished = QtCore.Signal(str, object, object, object)

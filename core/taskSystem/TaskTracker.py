@@ -162,13 +162,14 @@ class TaskTracker(QtCore.QObject):
 
     def logFailedTask(self, task: Any) -> None:
         logger.warning(f'Failed task: {task.uuid} - {task.error}')
-        if not getattr(task, 'isPersistent', False):
-            return
         data = task.serialize()
         data['failedAt'] = datetime.now().isoformat()
-        self._addToHistory(self._failedTaskHistory, data)
-        self.saveState()
-        logger.warning(f'Failed task: {task.uuid} - {task.error}')
+        # Only persist to config history when the task explicitly requests persistence
+        if getattr(task, 'isPersistent', False):
+            self._addToHistory(self._failedTaskHistory, data)
+            self.saveState()
+            logger.debug(f'Failed task persisted to history: {task.uuid}')
+        # Always emit so listeners (TaskTableWidget, etc.) can react
         self.failedTaskLogged.emit(data)
 
     def getUuidsByTag(self, tag: str) -> set[str]:

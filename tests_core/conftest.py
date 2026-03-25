@@ -104,12 +104,12 @@ def real_publisher():
     from core.Observer import Publisher
     publisher = Publisher()
     # Store original state
-    original_global = publisher.globalSubscribers.copy()
-    original_events = {k: v.copy() for k, v in publisher.eventSpecificSubscribers.items()}
+    original_global = publisher._globalSubscribers.copy()
+    original_events = {k: v.copy() for k, v in publisher._eventSubscribers.items()}
     yield publisher
     # Restore original state
-    publisher.globalSubscribers = original_global
-    publisher.eventSpecificSubscribers = original_events
+    publisher._globalSubscribers = original_global
+    publisher._eventSubscribers = original_events
 
 
 # ============================================================================

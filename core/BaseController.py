@@ -18,9 +18,9 @@ from typing import Dict, List
 from box import Box
 from PySide6 import QtCore
 
+from core.QtAppContext import QtAppContext
 from core.Logging import logger
 from core.Observer import Publisher, Subscriber
-from core.QtAppContext import QtAppContext
 from core.WidgetManager import WidgetManager
 
 
@@ -134,3 +134,18 @@ class BaseCtlHandler(Subscriber):
         Subscriber.__init__(self, events=events)
         self.widgetManager: WidgetManager = widgetManager
         self.controller: BaseController = widgetManager.controller
+
+    def update(self, event: str, *args, **kwargs):
+        """Guard against stale Qt controllers before dispatching events.
+        
+        Only checks validity when controller is a QObject (Qt-backed handler).
+        Non-Qt subscribers inheriting Subscriber directly are unaffected.
+        """
+        try:
+            from shiboken6 import isValid
+            if not isValid(self.controller):
+                logger.debug(f'{self.__class__.__name__}: controller destroyed, skipping event "{event}"')
+                return
+        except (ImportError, TypeError):
+            pass
+        return super().update(event, *args, **kwargs)
