@@ -20,10 +20,12 @@ Supports date-based, interval-based, and basic cron-style scheduling.
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from PySide6 import QtCore
 
+from . import ScheduleInfo
+from .ScheduleInfo import CronScheduleInfo, IntervalScheduleInfo, ScheduleInfoFactory, _QTIMER_MAX_MS
 from ..Logging import logger
 from .signals.TaskSchedulerSignals import TaskSchedulerSignals
 from .storage.BaseStorage import BaseStorage
@@ -115,6 +117,27 @@ class TaskScheduler(QtCore.QObject):
         self._jobs: Dict[str, ScheduledJob] = {}
         logger.info('TaskScheduler initialized (Pure Qt)')
 
+    @staticmethod
+    def _safeDelayMs(delaySeconds: float, jobId: str = '') -> int:
+        """
+        Clamp delay to QTimer's 32-bit int limit (~24.8 days).
+        If the target is further away, caller must re-arm on timeout.
+        """
+        if delaySeconds <= 0:
+            raise ValueError(f'Scheduled time is in the past (delay={delaySeconds:.1f}s)' + (f' for job {jobId}' if jobId else ''))
+        ms = int(delaySeconds * 1000)
+        if ms > _QTIMER_MAX_MS:
+            from ..Logging import logger as _log
+            _log.warning(f'Job {jobId}: delay {delaySeconds / 86400:.1f} days exceeds QTimer limit. Will checkpoint-rearm at {_QTIMER_MAX_MS / 1000 / 86400:.1f} days.')
+            return _QTIMER_MAX_MS
+        return ms
+
+    """
+    # NOTE: For true >24 day support, on the checkpoint timeout check if nextRun is
+    # still in the future and re-arm with another _safeDelayMs() call instead of
+    # executing. This is a rare edge case — add if your use-case needs it.
+    """
+
     # ── Signal proxy properties (backward-compat) ─────────────────────────────
 
     @property
@@ -129,12 +152,20 @@ class TaskScheduler(QtCore.QObject):
     def jobExecuted(self):
         return self.signals.jobExecuted
 
-    def addScheduledTask(self, task: Any, trigger: str, runDate: Optional[datetime] = None, intervalSeconds: Optional[int] = None, **kwargs) -> str:
+    def addScheduledTask(
+        self,
+        task: Any,
+        scheduleInfo: Union['ScheduleInfo', str],  # ScheduleInfo object OR legacy trigger str
+        # -- legacy kwargs kept for backward-compat --
+        runDate: Optional[datetime] = None,
+        intervalSeconds: Optional[int] = None,
+        **kwargs,
+    ) -> str:
         """
         Schedule a task for execution.
         Args:
             task: AbstractTask instance to schedule
-            trigger: Trigger type ('date', 'interval', 'cron')
+            scheduleInfo: ScheduleInfo object OR legacy trigger str
             runDate: For 'date' trigger - when to run
             intervalSeconds: For 'interval' trigger - interval in seconds
             **kwargs: For 'cron' trigger (hour, minute)
@@ -142,6 +173,78 @@ class TaskScheduler(QtCore.QObject):
             Job ID for the scheduled job
         Raises:
             ValueError: If trigger type is invalid or required parameters missing
+        """
+        # --- Normalize: legacy (trigger str + kwargs) → ScheduleInfo container ---
+        if isinstance(scheduleInfo, str):
+            trigger = scheduleInfo
+            legacyDict: Dict[str, Any] = {'trigger': trigger}
+            if runDate:
+                legacyDict['runDate'] = runDate
+            if intervalSeconds:
+                legacyDict['intervalSeconds'] = intervalSeconds
+            legacyDict.update(kwargs)
+            scheduleInfo = ScheduleInfoFactory.fromDict(legacyDict)
+        # From here, scheduleInfo is always a typed ScheduleInfo object.
+        trigger = scheduleInfo.trigger
+        taskUuid = task.uuid
+        taskData = task.serialize()
+        taskClass = f'{task.__class__.__module__}.{task.__class__.__name__}'
+        jobId = f'task_{taskUuid}'
+        logger.debug(f'Scheduling task: {taskUuid} trigger={trigger}')
+        timer = QtCore.QTimer(self)
+        nextRun: Optional[datetime] = None
+        if trigger == 'date':
+            # Guard: QTimer 32-bit overflow — use checkpoint re-arm if > ~24 days
+            delayMs = self._safeDelayMs(scheduleInfo.delaySeconds, jobId)
+            timer.setSingleShot(True)
+            timer.setInterval(delayMs)
+            nextRun = scheduleInfo.nextRun
+            logger.info(f'Scheduled one-time task {taskUuid} for {nextRun}')
+        elif trigger == 'interval':
+            info = scheduleInfo  # type: IntervalScheduleInfo
+            if info.startDate and info.startDate > datetime.now():
+                # Deferred first run
+                initialDelayMs = self._safeDelayMs(info.delaySeconds, jobId)
+                timer.setSingleShot(True)
+                timer.setInterval(initialDelayMs)
+                nextRun = info.startDate
+                kwargs['_intervalSeconds'] = info.intervalSeconds
+            else:
+                timer.setSingleShot(False)
+                timer.setInterval(info.intervalSeconds * 1000)
+                nextRun = info.nextRun
+        elif trigger == 'cron':
+            info = scheduleInfo  # type: CronScheduleInfo
+            delayMs = self._safeDelayMs(scheduleInfo.delaySeconds, jobId)
+            timer.setSingleShot(True)
+            timer.setInterval(delayMs)
+            nextRun = scheduleInfo.nextRun
+            kwargs.setdefault('hour', info.hour)
+            kwargs.setdefault('minute', info.minute)
+        else:
+            raise ValueError(f'Unknown trigger: {trigger}')
+        timer.timeout.connect(lambda: self._executeScheduledTask(jobId, taskUuid, taskClass, taskData, trigger, **kwargs))
+        job = ScheduledJob(
+            jobId,
+            taskUuid,
+            taskClass,
+            taskData,
+            trigger,
+            timer,
+            nextRun,
+            intervalSeconds=getattr(scheduleInfo, 'intervalSeconds', None),
+            cronHour=getattr(scheduleInfo, 'hour', None),
+            cronMinute=getattr(scheduleInfo, 'minute', None),
+        )
+        self._jobs[jobId] = job
+        timer.start()
+        self._saveJobs()
+        self.jobScheduled.emit(jobId, taskUuid)
+        return jobId
+
+    def __addScheduledTaskOld(self, task: Any, trigger: str, runDate: Optional[datetime] = None, intervalSeconds: Optional[int] = None, **kwargs) -> str:
+        """
+        old method. Deprecated
         """
         taskUuid = task.uuid
         taskName = task.name

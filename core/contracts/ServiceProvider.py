@@ -62,7 +62,7 @@ class ServiceProvider(ABC):
         Use ``self.ctx.registerService(name, instance)`` here.
         """
         pass
-    
+
     # @abstractmethod
     def boot(self):
         """Optional post-registration hook.
@@ -71,7 +71,7 @@ class ServiceProvider(ABC):
         providers already being registered.
         """
         pass
-    
+
     # @abstractmethod
     def booted(self):
         """Optional hook executed after the application is fully bootstrapped.

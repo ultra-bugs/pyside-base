@@ -11,26 +11,18 @@
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-from core.BaseController import BaseController
-from core.Config import Config
-from core.Exceptions import AppException, ConfigError, ExceptionHandler, ServiceError, UIError
-from core.Logging import logger
-from core.Observer import Publisher, Subscriber
-from core.QtAppContext import QtAppContext
-from core.WidgetManager import WidgetManager
+from __future__ import annotations
+from dataclasses import dataclass, field
+from typing import Any, Callable, Optional
 
 
-__all__ = [
-    'Publisher',
-    'Subscriber',
-    'BaseController',
-    'WidgetManager',
-    'QtAppContext',
-    'AppException',
-    'ConfigError',
-    'ServiceError',
-    'UIError',
-    'ExceptionHandler',
-    'Config',
-    'logger',
-]
+@dataclass
+class SinkEntry:
+    id: str
+    sink: Any  # path str, callable, widget, sys.stderr
+    level: str = 'DEBUG'
+    enabled: bool = True
+    position: int = 0
+    filter: Optional[Callable] = None
+    kwargs: dict = field(default_factory=dict)
+    loguru_id: Optional[int] = field(default=None, repr=False)

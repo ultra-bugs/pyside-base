@@ -12,24 +12,27 @@
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
 import inspect
-import queue
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Dict, List, Optional
 
 from PySide6.QtCore import QMutex, QMutexLocker, QObject, Qt, Signal
 
 from .Decorators import singleton
-from .threading.DaemonWorker import DaemonWorker
 from .Utils import PythonHelper
+from .contracts.Message import Message
+from .contracts.ReplyChannel import ReplyChannel
+from .threading.DaemonWorker import DaemonWorker
 
 _mainThread = threading.main_thread()
-_STOP = object()
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
+
 class _MainThreadBridge(QObject):
     """Relay subscriber.update() calls to the Qt main thread via QueuedConnection."""
+
     _sig = Signal(object, str, object, object)
 
     def __init__(self):
@@ -44,20 +47,22 @@ class _MainThreadBridge(QObject):
 
 
 class _PubSubDispatcher(DaemonWorker):
-    """Single-thread FIFO dispatcher for Publisher events."""
+    """Single-thread FIFO dispatcher for Publisher events.
+
+    Dequeues `Message` objects and routes delivery per thread-affinity and
+    the `isAsync` flag set by the *sender* (Publisher.notifyAsync).
+    """
 
     def __init__(self, publisher: 'Publisher'):
         super().__init__('PubSubDispatcher')
         self._pub = publisher
 
-    def onItem(self, msg) -> None:
-        event, args, kwargs = msg
-        self._pub._deliver(event, args, kwargs)
+    def onItem(self, msg: Message) -> None:
+        self._pub._deliver(msg)
 
 
 class _CallableTask:
     """Lightweight AbstractTask adapter: wraps a zero-arg callable for TaskSystem."""
-    _isCallableTask = True
 
     def __init__(self, fn: Callable, name: str = 'PubSubTask'):
         self._fn = fn
@@ -65,42 +70,40 @@ class _CallableTask:
 
     def _asAbstractTask(self):
         from core.taskSystem.AbstractTask import AbstractTask
-
         fn = self._fn
         taskName = self._taskName
-
         class _Task(AbstractTask):
             serializables = ()
-
             def __init__(self):
                 super().__init__(name=taskName, failSilently=True)
-
             def handle(self):
                 fn()
-
             def _performCancellationCleanup(self):
                 pass
-
             @classmethod
             def deserialize(cls, data):
                 return None
-
         return _Task()
 
 
 # ── Publisher ─────────────────────────────────────────────────────────────────
 
+
 @singleton
 class Publisher:
     """Queue-based, thread-aware Pub/Sub Publisher (Singleton).
 
-    notify() is non-blocking — events are enqueued and dispatched by a
-    single background daemon thread (PubSubDispatcher), preserving FIFO order.
+    `notify()` is non-blocking — events are enqueued as `Message` objects and
+    dispatched FIFO by a background `_PubSubDispatcher` thread.
 
     Delivery routing per subscriber:
-    - Registered on main thread  → _MainThreadBridge (Qt QueuedConnection, UI-safe)
-    - Child thread, default      → inline on Dispatcher thread
-    - Child thread, pubsubFireAndForget=True → TaskManagerService (respects concurrency)
+    - Registered on main thread           → `_MainThreadBridge` (QueuedConnection, UI-safe)
+    - Child thread, `msg.isAsync=False`   → inline on Dispatcher thread
+    - Child thread, `msg.isAsync=True`    → `TaskManagerService` (respects concurrency)
+
+    Fire-and-Forget is a **sender** concern, set via `notifyAsync()`:
+        publisher.notify(event)        # delivery may block Dispatcher
+        publisher.notifyAsync(event)   # delivery offloaded to TaskSystem
     """
 
     _instance: 'Publisher' = None
@@ -124,6 +127,8 @@ class Publisher:
         self._bridge = _MainThreadBridge()
         self._dispatcher = _PubSubDispatcher(self)
         self._dispatcher.start()
+        # Dedicated executor for async PubSub delivery — decoupled from TaskSystem pool
+        self._pubsubExecutor = ThreadPoolExecutor(max_workers=2, thread_name_prefix='PubSubExec')
         from .Logging import logger
         self._logger = logger.bind(component='core.Observer.Publisher')
         Publisher._isInited = True
@@ -156,8 +161,22 @@ class Publisher:
         return self
 
     def notify(self, event: str, *args, **kwargs) -> 'Publisher':
-        """Non-blocking: enqueue event and return immediately."""
-        self._dispatcher.enqueue((event, args, kwargs))
+        """Non-blocking: enqueue event for synchronous delivery on the Dispatcher thread.
+        Delivery will block the Dispatcher while the subscriber processes it.
+        Use `notifyAsync()` if the handler is I/O-heavy.
+        """
+        msg = Message(topic=event, payload={'args': args, 'kwargs': kwargs}, isAsync=False)
+        self._dispatcher.enqueue(msg)
+        return self
+
+    def notifyAsync(self, event: str, *args, **kwargs) -> 'Publisher':
+        """Non-blocking: enqueue event for async delivery via TaskManagerService.
+        The *sender* declares this message as fire-and-forget — delivery is
+        offloaded to the TaskSystem, freeing the Dispatcher immediately.
+        Use when the handler performs I/O (API calls, DB writes, etc.).
+        """
+        msg = Message(topic=event, payload={'args': args, 'kwargs': kwargs}, isAsync=True)
+        self._dispatcher.enqueue(msg)
         return self
 
     def connect(self, widget, signalName: str, event: str, *args, **kwargs) -> 'Publisher':
@@ -166,73 +185,63 @@ class Publisher:
         if slot is None:
             self._logger.error(f"Signal '{signalName}' not found on widget '{widget.__class__.__name__}'")
             return self
-        slot.connect(lambda *s_args, **signalKwargs: self.notify(event, *[*args, *s_args], **{**kwargs, **signalKwargs}))
+        slot.connect(lambda *sArgs, **sKwargs: self.notify(event, *[*args, *sArgs], **{**kwargs, **sKwargs}))
         return self
 
     def stop(self) -> None:
-        """Gracefully stop the dispatcher thread."""
+        """Gracefully stop the dispatcher thread and PubSub executor."""
         self._dispatcher.stop()
+        self._pubsubExecutor.shutdown(wait=False)
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
-    def _deliver(self, event: str, args: tuple, kwargs: dict) -> None:
+    def _deliver(self, msg: Message) -> None:
         with QMutexLocker(self._lock):
-            targets = [*self._globalSubscribers, *self._eventSubscribers.get(event, [])]
+            targets = [*self._globalSubscribers, *self._eventSubscribers.get(msg.topic, [])]
         for sub in targets:
-            self._logger.debug(f"Dispatching '{event}' → {sub.__class__.__name__}")
-            self._invokeSubscriber(sub, event, args, kwargs)
+            self._logger.debug(f"Dispatching '{msg.topic}' → {sub.__class__.__name__} (async={msg.isAsync})")
+            self._invokeSubscriber(sub, msg)
 
-    def _invokeSubscriber(self, sub, event: str, args: tuple, kwargs: dict) -> None:
+    def _invokeSubscriber(self, sub, msg: Message) -> None:
+        args: tuple = msg.payload.get('args', ())
+        kwargs: dict = msg.payload.get('kwargs', {})
         homeThread = getattr(sub, '_homeThread', None)
         if homeThread is _mainThread:
-            self._bridge.deliver(sub, event, args, kwargs)
+            self._bridge.deliver(sub, msg.topic, args, kwargs)
             return
-        if getattr(sub, 'pubsubFireAndForget', False):
-            self._dispatchToTaskSystem(sub, event, args, kwargs)
+        if msg.isAsync:
+            self._dispatchToTaskSystem(sub, msg.topic, args, kwargs)
         else:
-            sub.update(event, *args, **kwargs)
+            sub.update(msg.topic, *args, **kwargs)
 
     def _dispatchToTaskSystem(self, sub, event: str, args: tuple, kwargs: dict) -> None:
+        """Dispatch async PubSub delivery on a dedicated executor.
+        Uses a separate ThreadPoolExecutor (2 threads) instead of the TaskSystem
+        QThreadPool to prevent pool contention / deadlock when all task threads
+        are occupied.
+        """
+        def _deliver():
+            try:
+                sub.update(event, *args, **kwargs)
+            except Exception as e:
+                self._logger.opt(exception=e).error(f'PubSub async delivery failed for {event}: {e}')
         try:
-            from core.QtAppContext import QtAppContext
-            tm = QtAppContext.globalInstance().taskManager
-            if tm:
-                ct = _CallableTask(lambda: sub.update(event, *args, **kwargs), name=f'PubSub:{event}')
-                tm.addTask(ct._asAbstractTask())
-                return
-        except Exception as e:
-            self._logger.warning(f'TaskSystem unavailable for fireAndForget, falling back inline: {e}')
-        sub.update(event, *args, **kwargs)
+            self._pubsubExecutor.submit(_deliver)
+        except RuntimeError:
+            # Executor shut down — fall back to inline delivery
+            self._logger.warning(f'PubSub executor shut down, delivering inline: {event}')
+            sub.update(event, *args, **kwargs)
 
 
-# ── Subscriber ────────────────────────────────────────────────────────────────
+# ── UpdatableMixin ────────────────────────────────────────────────────────────
 
-class Subscriber:
-    """Base class for subscribers (observers).
 
-    Thread routing flags:
-    - pubsubFireAndForget (class-level bool): Set True for I/O-heavy handlers
-      that should be dispatched via TaskManagerService instead of blocking
-      the Dispatcher thread.
-    """
-
-    pubsubFireAndForget: bool = False
-
-    def __init__(self, events: List[str], isGlobalSubscriber=False):
-        self._homeThread = threading.current_thread()
-        self.events = events
-        self.isGlobalSubscriber = bool(isGlobalSubscriber)
-        publisher = Publisher()
-        for event in events:
-            publisher.subscribe(self, event)
-        if isGlobalSubscriber:
-            publisher.subscribe(self)
-
+class UpdatableMixin:
     def update(self, event: str, *args, **kwargs):
         """Dispatch to on<EventName> method with smart parameter injection."""
         from caseconverter import pascalcase
         import re
-        cleanEvent = re.sub(r'[.\-_+/*]', ' ', event)
+        cleanEvent = re.sub(r'[\.\-_+/*]', ' ', event)
         methodName = f'on{pascalcase(cleanEvent)}'
         sig = None
         if not hasattr(self, methodName):
@@ -305,13 +314,32 @@ class Subscriber:
         except RuntimeError as e:
             if 'signal' in str(e).lower():
                 from .Logging import logger
-                logger.bind(component=self.__class__.__name__).opt(exception=e).exception(
-                    f'RuntimeError in event handler: {self.__class__.__name__}.{methodName}')
+                logger.bind(component=self.__class__.__name__).opt(exception=e).exception(f'RuntimeError in event handler: {self.__class__.__name__}.{methodName}')
                 return
             raise
         except Exception as e:
             from .Logging import logger
-            logger.bind(component=self.__class__.__name__).opt(exception=e).exception(
-                f'Exception in event handler: {self.__class__.__name__}.{methodName}')
+            logger.bind(component=self.__class__.__name__).opt(exception=e).exception(f'Exception in event handler: {self.__class__.__name__}.{methodName}')
             from .Exceptions import ExceptionHandler
             ExceptionHandler().handleException(e)
+
+
+# ── Subscriber ────────────────────────────────────────────────────────────────
+
+
+class Subscriber(UpdatableMixin):
+    """Base class for subscribers (observers).
+
+    Thread routing is determined by `_homeThread` (captured at construction).
+    FnF vs sync delivery is decided by the **sender** via `notify()` / `notifyAsync()`.
+    """
+
+    def __init__(self, events: List[str], isGlobalSubscriber=False):
+        self._homeThread = threading.current_thread()
+        self.events = events
+        self.isGlobalSubscriber = bool(isGlobalSubscriber)
+        publisher = Publisher.instance()
+        for event in events:
+            publisher.subscribe(self, event)
+        if isGlobalSubscriber:
+            publisher.subscribe(self)

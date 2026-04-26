@@ -137,7 +137,6 @@ class BaseCtlHandler(Subscriber):
 
     def update(self, event: str, *args, **kwargs):
         """Guard against stale Qt controllers before dispatching events.
-        
         Only checks validity when controller is a QObject (Qt-backed handler).
         Non-Qt subscribers inheriting Subscriber directly are unaffected.
         """

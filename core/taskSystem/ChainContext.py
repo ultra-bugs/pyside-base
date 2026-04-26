@@ -5,19 +5,21 @@ Thread-safe context manager for sharing data between tasks in a TaskChain.
 Provides serialization support for persistence across application restarts.
 """
 
-#                  M""""""""`M            dP
-#                  Mmmmmm   .M            88
-#                  MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
-#                  MMP  .MMMMM  88    88  88888"    88'  `88
-#                  M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
-#                  M         M  `88888P'  dP   `YP  `88888P'
-#                  MMMMMMMMMMM    -*-  Created by Zuko  -*-
+#              M""""""""`M            dP
+#              Mmmmmm   .M            88
+#              MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
+#              MMP  .MMMMM  88    88  88888"    88'  `88
+#              M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
+#              M         M  `88888P'  dP   `YP  `88888P'
+#              MMMMMMMMMMM    -*-  Created by Zuko  -*-
 #
-#                  * * * * * * * * * * * * * * * * * * * * *
-#                  * -    - -   F.R.E.E.M.I.N.D   - -    - *
-#                  * -  Copyright © 2026 (Z) Programing  - *
-#                  *    -  -  All Rights Reserved  -  -    *
-#                  * * * * * * * * * * * * * * * * * * * * *
+#              * * * * * * * * * * * * * * * * * * * * *
+#              * -    - -   F.R.E.E.M.I.N.D   - -    - *
+#              * -  Copyright © 2026 (Z) Programing  - *
+#              *    -  -  All Rights Reserved  -  -    *
+#              * * * * * * * * * * * * * * * * * * * * *
+
+#
 import json
 import threading
 from typing import Any, Dict, Optional
@@ -78,13 +80,31 @@ class ChainContext:
         """
         # Validate JSON serializability
         try:
-            json.dumps(value)
+            test = json.dumps(value)
         except (TypeError, ValueError) as e:
-            raise TypeError(f"Value for key '{key}' is not JSON serializable: {e}")
+            try:
+                shouldDump = True
+                _org = value
+                if hasattr(value, 'toJSON'):
+                    test = value.toJSON()
+                    shouldDump = False
+                if hasattr(value, 'toDict') and callable(value.toDict):
+                    test = value.toDict()
+                    shouldDump = False
+                if hasattr(value, 'to_dict') and callable(value.to_dict):
+                    test = value.to_dict()
+                    shouldDump = False
+                if hasattr(value, 'serialize') and callable(value.serialize):
+                    test = value.serialize()
+                    shouldDump = False
+                if shouldDump:
+                    test = json.dumps(value)
+            except (TypeError, ValueError) as te:
+                raise TypeError(f"Value for key '{key}' is not JSON serializable: {e}")
         with self._lock:
             self._data[key] = value
             logger.debug(f"ChainContext[{self._chainUuid}] set key '{key}'")
-
+    
     def serialize(self) -> Dict[str, Any]:
         """
         Serialize context to dictionary for persistence.
@@ -94,8 +114,25 @@ class ChainContext:
         with self._lock:
             return {
                 'chainUuid': self._chainUuid,
-                'data': self._data.copy(),  # Return copy to avoid external modification
+                'data': self._serializeData(self._data.copy()),
             }
+
+    @staticmethod
+    def _serializeData(data: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert values in data dict to JSON-safe primitives."""
+        result = {}
+        for key, value in data.items():
+            if hasattr(value, 'to_dict') and callable(value.to_dict):
+                result[key] = value.to_dict()
+            elif hasattr(value, 'toDict') and callable(value.toDict):
+                result[key] = value.toDict()
+            elif hasattr(value, 'toJSON') and callable(value.toJSON):
+                result[key] = value.toJSON()
+            elif hasattr(value, 'serialize') and callable(value.serialize):
+                result[key] = value.serialize()
+            else:
+                result[key] = value
+        return result
 
     @classmethod
     def deserialize(cls, data: Dict[str, Any]) -> 'ChainContext':

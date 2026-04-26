@@ -54,7 +54,7 @@ class Config:
     def load(self) -> 'Config':
         """Load configuration from file"""
         with QMutexLocker(self._lock):
-            from .Logging import logger
+            from loguru import logger
             if self.isLoaded:
                 return self
             try:
@@ -72,7 +72,7 @@ class Config:
     def save(self) -> None:
         """Save configuration to file"""
         with QMutexLocker(self._lock):
-            from .Logging import logger
+            from loguru import logger
             try:
                 PathHelper.ensureParentDirExists(self._config_file)
                 with open(self._config_file, 'w', encoding='utf-8') as f:
@@ -114,8 +114,8 @@ class Config:
         defaultConfig = {
             'app': {'name': 'Base Qt Application', 'version': '1.0.0', 'debug': False},
             'ui': {'theme': 'auto', 'language': 'en', 'high_dpi': True},
-            'logging': {'level': 'INFO', 'file': 'app.log'},
-            'consolelog': {'enable': True, 'level': 'DEBUG'},
+            'logging': {'level': 'INFO', 'file': 'app.log', 'module_levels': {'app': 'DEBUG', 'core': 'INFO'}},
+            'consolelog': {'enable': True, 'level': 'DEBUG', 'module_levels': {'app': 'DEBUG', 'core': 'INFO'}},
         }
         locker = QMutexLocker(self._lock)
         self._config = defaultConfig

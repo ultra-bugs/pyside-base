@@ -45,6 +45,7 @@ class QtAppContext(QObject):
     Manages Lifecycle, Feature Flags, Services, and Scoped Resources.
     """
 
+    _initialized = False
     appBooting = Signal()
     appReady = Signal()
     appClosing = Signal()
@@ -66,7 +67,15 @@ class QtAppContext(QObject):
         sys.path.append(str(projectRoot))
         os.environ['QT_AUTO_SCREEN_SCALE_FACTOR'] = '1'
 
-    def __init__(self):
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self) -> None:
+        if self.__class__._initialized:
+            return
+        self.__class__._initialized = True
         self._ensurePyPath()
         super().__init__()
         self._app: Union[QApplication, QCoreApplication] = QApplication.instance() or QApplication(sys.argv)
@@ -135,6 +144,15 @@ class QtAppContext(QObject):
             if self._isBootstrapped:
                 logger.warning('QtAppContext is already bootstrapped. Skipping.')
                 return
+            # ── Bootstrap-begin diagnostics ───────────────────────────────────
+            import faulthandler
+            faulthandler.enable()  # C-level crash dumps (SIGSEGV / SIGABRT) → stderr
+            try:
+                from typeguard import install_import_hook
+                install_import_hook('core')
+                logger.debug('typeguard import hook installed for namespace: core')
+            except ImportError:
+                logger.warning('typeguard not installed — runtime type checking disabled for core namespace')
             logger.info('Bootstrapping Application Context...')
             self.appBooting.emit()
             self._load_environment()
@@ -271,6 +289,7 @@ class QtAppContext(QObject):
                 logger.error(f'[Providers] {msg}')
                 WidgetUtils.showAlertMsgBox(None, title='Provider Boot Error', msg=msg)
         logger.info(f'[Providers] Loaded {len(providerInstances)}/{len(PROVIDERS)} providers.')
+
     def _timeoutUtilBootstrapped(self, serviceInstance):
         if not self._isServiceProviderRegistered:
             QTimer.singleShot(500, lambda: self._timeoutUtilBootstrapped(serviceInstance))
@@ -281,6 +300,7 @@ class QtAppContext(QObject):
                 serviceInstance.booted()
             except:
                 raise
+
     def getMainWindowCtl(self):
         for widget in self._app.topLevelWidgets():
             if type(widget).__name__ == 'MainController':
@@ -306,7 +326,6 @@ class QtAppContext(QObject):
 
     def registerService(self, nameOrInstance: Union[str, Type, Any], instance: Any = None) -> 'Self':
         """Register a global service.
-
         Overloads:
             registerService(instance)           → key = FQN of type(instance)
             registerService(MyClass, instance)  → key = FQN of MyClass
@@ -375,11 +394,9 @@ class QtAppContext(QObject):
 
     def getCollection(self, key: str, itemType: Optional[Type[T]] = None) -> SharedCollection:
         """Return (or lazily create) a SharedCollection by key.
-
         Args:
             key: Unique name for the collection (e.g. 'activeTasks').
             itemType: Optional type hint — purely documentary, not enforced at runtime.
-
         Returns:
             The SharedCollection registered under *key*.
         """
@@ -398,3 +415,7 @@ class QtAppContext(QObject):
         with QMutexLocker(self._collectionLock):
             self._sharedCollections.pop(key, None)
         return self
+
+    @property
+    def app(self):
+        return self._app

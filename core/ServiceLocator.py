@@ -60,7 +60,6 @@ class ServiceLocator(QObject):
 
     def register(self, interfaceOrInstance: Union[str, Type, Any], instance: Any = _SENTINEL) -> None:
         """Register a global singleton.
-
         Overloads (inspired by Laravel Container):
             register(instance)           → key = FQN of type(instance)
             register(MyClass, instance)  → key = FQN of MyClass
@@ -79,7 +78,6 @@ class ServiceLocator(QObject):
                 key = self._resolveKey(interfaceOrInstance)
                 del self._backCompatibleMaps[interfaceOrInstance]
             actualInstance = instance
-
         with QMutexLocker(self._lock):
             if key in self._singletons:
                 logger.warning(f'Overwriting existing singleton service: {key}')
@@ -87,7 +85,6 @@ class ServiceLocator(QObject):
 
     def get(self, interface: Union[str, Type[T]], default: Optional[T] = None) -> Optional[T]:
         """Retrieve a global singleton by string key or class.
-
         Examples:
             get('my_key')         → legacy string lookup
             get(MyClass)          → lookup by class FQN
@@ -103,7 +100,6 @@ class ServiceLocator(QObject):
 
     def registerScoped(self, tag: str, instance: Any) -> None:
         """Register an instance under a specific tag/scope.
-
         Keeps the instance alive until releaseScope is called.
         Duplicate objects in the same scope are silently ignored.
         """
@@ -122,11 +118,9 @@ class ServiceLocator(QObject):
 
     def getScopedByType(self, tag: str, cls: Type[T]) -> Optional[T]:
         """Get the first scoped instance matching the given class under a tag.
-
         Args:
             tag: Scope identifier (e.g. task UUID).
             cls: Class to filter by (uses isinstance check).
-
         Returns:
             First matched instance or None.
         """
@@ -138,7 +132,6 @@ class ServiceLocator(QObject):
 
     def releaseScope(self, tag: str) -> None:
         """Cleanup all instances under a tag.
-
         Cleanup priority per instance:
             1. cleanup()  (highest)
             2. close()

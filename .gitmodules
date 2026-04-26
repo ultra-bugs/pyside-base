@@ -1,4 +1,4 @@
-[submodule ".cursor"]
-	path = .cursor
+[submodule ".agents"]
+	path = .agents
 	url = https://github.com/tansautn/zuko-ai-rules
 	branch = python-qt

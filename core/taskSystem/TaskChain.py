@@ -5,26 +5,31 @@ Meta-task that executes multiple tasks sequentially with shared context.
 Supports retry behaviors, progress tracking, and persistence.
 """
 
-#                  M""""""""`M            dP
-#                  Mmmmmm   .M            88
-#                  MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
-#                  MMP  .MMMMM  88    88  88888"    88'  `88
-#                  M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
-#                  M         M  `88888P'  dP   `YP  `88888P'
-#                  MMMMMMMMMMM    -*-  Created by Zuko  -*-
+#              M""""""""`M            dP
+#              Mmmmmm   .M            88
+#              MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
+#              MMP  .MMMMM  88    88  88888"    88'  `88
+#              M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
+#              M         M  `88888P'  dP   `YP  `88888P'
+#              MMMMMMMMMMM    -*-  Created by Zuko  -*-
 #
-#                  * * * * * * * * * * * * * * * * * * * * *
-#                  * -    - -   F.R.E.E.M.I.N.D   - -    - *
-#                  * -  Copyright © 2026 (Z) Programing  - *
-#                  *    -  -  All Rights Reserved  -  -    *
-#                  * * * * * * * * * * * * * * * * * * * * *
+#              * * * * * * * * * * * * * * * * * * * * *
+#              * -    - -   F.R.E.E.M.I.N.D   - -    - *
+#              * -  Copyright © 2026 (Z) Programing  - *
+#              *    -  -  All Rights Reserved  -  -    *
+#              * * * * * * * * * * * * * * * * * * * * *
+
+#
 import importlib
 import time
+import uuid
+from logging import exception
 from typing import Any, Dict, List, Optional
 
 from core.Logging import logger
 from core.Observer import Publisher, Subscriber
-from core.taskSystem.AbstractTask import AbstractTask, TaskFailedException
+from core.taskSystem.AbstractTask import AbstractTask
+from core.taskSystem.Exceptions import TaskFailedException
 from core.taskSystem.ChainContext import ChainContext
 from core.taskSystem.ChainRetryBehavior import ChainRetryBehavior
 from core.taskSystem.TaskStatus import TaskStatus
@@ -69,9 +74,10 @@ class TaskChain(AbstractTask, Subscriber):
             task.chainUuid = self.uuid
             task.addTag('_ChainedChild')
             task.addTag(f'Parent_{self.uuid}')
+        if not hasattr(self, '_chainContext') or not isinstance(self._chainContext, ChainContext):
+            self._chainContext = ChainContext(self.uuid)
         self._tasks = tasks
         self._currentTaskIndex = 0
-        self._chainContext = ChainContext(self.uuid)
         self._taskStates = {task.uuid: {'status': TaskStatus.PENDING, 'result': None, 'error': ''} for task in tasks}
         self.retryBehaviorMap = retryBehaviorMap if retryBehaviorMap is not None else {}
         self._chainRetryAttempts = 0
@@ -175,6 +181,21 @@ class TaskChain(AbstractTask, Subscriber):
         publisher = Publisher()
         publisher.unsubscribe(self, event='ChainProgressUpdateRequest')
 
+    def _onSubTaskProgress(self, subUuid: str, subPct: int, subLabel: str) -> None:
+        """Handle progress update from currently executing sub-task.
+        Calculates chain-aware progress:
+            chainPct = (stepIdx * 100 + subPct) / totalSteps
+        """
+        n = len(self._tasks)
+        if n == 0:
+            return
+        chainPct = int((self._currentTaskIndex * 100 + subPct) / n)
+        task = self._tasks[self._currentTaskIndex]
+        label = f'[{self._currentTaskIndex + 1}/{n}] {task.name}'
+        if subLabel:
+            label = f'{label}: {subLabel}'
+        self.setProgress(chainPct, label)
+
     def _executeSubTaskWithRetry(self, task: AbstractTask) -> bool:
         """
         Execute a child task with retry logic.
@@ -187,36 +208,44 @@ class TaskChain(AbstractTask, Subscriber):
         """
         attempts = 0
         maxAttempts = task.maxRetries + 1
-        while attempts < maxAttempts:
-            if self.isStopped():
-                return False
-            if attempts > 0:
-                self.setStatus(TaskStatus.RETRYING)
-                logger.info(f"TaskChain {self.uuid}: Retrying sub-task '{task.name}' (Attempt {attempts}/{task.maxRetries}).")
-                time.sleep(task.retryDelaySeconds)
-                self.setStatus(TaskStatus.RUNNING)
-            if self.isStopped():
-                return False
-            task.setStatus(TaskStatus.PENDING)
-            try:
-                task.run()
-                if task.status == TaskStatus.COMPLETED:
-                    self._taskStates[task.uuid]['status'] = task.status
-                    self._taskStates[task.uuid]['result'] = task.result
-                    logger.info(f"TaskChain {self.uuid}: Sub-task '{task.name}' completed successfully")
-                    return True
-                if task.status == TaskStatus.CANCELLED or self.isStopped():
+        # Connect sub-task progress signal → chain-aware aggregation
+        task.signals.progressUpdated.connect(self._onSubTaskProgress)
+        try:
+            while attempts < maxAttempts:
+                if self.isStopped():
                     return False
-            except TaskFailedException:
-                logger.error(f"TaskChain {self.uuid}: Sub-task '{task.name}' crashed with exception.", exc_info=True)
-            except Exception as e:
-                task.fail(str(e))
-                logger.error(f"TaskChain {self.uuid}: Sub-task '{task.name}' crashed with exception.", exc_info=True)
-            attempts += 1
-            self._taskStates[task.uuid]['status'] = task.status
-            self._taskStates[task.uuid]['error'] = task.error or 'Unknown error'
-        logger.warning(f"TaskChain {self.uuid}: Sub-task '{task.name}' failed after {maxAttempts} attempts")
-        return False
+                if attempts > 0:
+                    self.setStatus(TaskStatus.RETRYING)
+                    logger.info(f"TaskChain {self.uuid}: Retrying sub-task '{task.name}' (Attempt {attempts}/{task.maxRetries}).")
+                    time.sleep(task.retryDelaySeconds)
+                    self.setStatus(TaskStatus.RUNNING)
+                if self.isStopped():
+                    return False
+                task.setStatus(TaskStatus.PENDING)
+                try:
+                    task.run()
+                    if task.status == TaskStatus.COMPLETED:
+                        self._taskStates[task.uuid]['status'] = task.status
+                        self._taskStates[task.uuid]['result'] = task.result
+                        logger.info(f"TaskChain {self.uuid}: Sub-task '{task.name}' completed successfully")
+                        return True
+                    if task.status == TaskStatus.CANCELLED or self.isStopped():
+                        return False
+                except TaskFailedException as tfe:
+                    logger.opt(exception=tfe).error(f"TaskChain {self.uuid}: Sub-task '{task.name}' crashed with exception.", exc_info=True)
+                except Exception as e:
+                    task.fail(e.__class__.__name__ + '. ' + str(e))
+                    logger.opt(exception=e).error(f"TaskChain {self.uuid}: Sub-task '{task.name}' crashed with exception.", exc_info=True)
+                attempts += 1
+                self._taskStates[task.uuid]['status'] = task.status
+                self._taskStates[task.uuid]['error'] = task.error or 'Unknown error'
+            logger.warning(f"TaskChain {self.uuid}: Sub-task '{task.name}' failed after {maxAttempts} attempts")
+            return False
+        finally:
+            try:
+                task.signals.progressUpdated.disconnect(self._onSubTaskProgress)
+            except Exception:
+                pass
 
     def serialize(self) -> Dict[str, Any]:
         """

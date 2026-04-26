@@ -1,6 +1,7 @@
 """
 Unit tests for core.ServiceLocator – FQN/type-based lookup feature.
 """
+
 import pytest
 
 from core.ServiceLocator import ServiceLocator
@@ -9,6 +10,7 @@ from core.ServiceLocator import ServiceLocator
 # ---------------------------------------------------------------------------
 # Dummy service classes used across tests
 # ---------------------------------------------------------------------------
+
 
 class DummyServiceA:
     pass
@@ -28,6 +30,7 @@ class DummyServiceC:
 # ---------------------------------------------------------------------------
 # Global singleton – register / get
 # ---------------------------------------------------------------------------
+
 
 class TestGlobalSingletons:
     def setup_method(self):
@@ -73,6 +76,7 @@ class TestGlobalSingletons:
 # ---------------------------------------------------------------------------
 # Scoped instances – registerScoped / getScopedByType / releaseScope
 # ---------------------------------------------------------------------------
+
 
 class TestScopedServices:
     def setup_method(self):

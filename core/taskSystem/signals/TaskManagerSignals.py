@@ -15,7 +15,7 @@ class TaskManagerSignals(QtCore.QObject):
         taskRemoved(uuid: str)
         taskFinished(uuid: str, task: object, result: object, error: object|None)
         taskStatusUpdated(uuid: str, status: TaskStatus)
-        taskProgressUpdated(uuid: str, progress: int)
+        taskProgressUpdated(uuid: str, progress: int, label: str)
         failedTaskLogged(taskInfo: dict)
         systemReady()
     """
@@ -24,6 +24,6 @@ class TaskManagerSignals(QtCore.QObject):
     taskRemoved = QtCore.Signal(str)
     taskFinished = QtCore.Signal(str, object, object, object)
     taskStatusUpdated = QtCore.Signal(str, object)
-    taskProgressUpdated = QtCore.Signal(str, int)
+    taskProgressUpdated = QtCore.Signal(str, int, str)  # uuid, progress, label
     failedTaskLogged = QtCore.Signal(dict)
     systemReady = QtCore.Signal()

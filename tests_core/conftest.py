@@ -7,6 +7,8 @@ This file provides:
 - Common test utilities
 """
 
+import importlib
+
 #                  M""""""""`M            dP
 #                  Mmmmmm   .M            88
 #                  MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
@@ -32,6 +34,15 @@ project_root = Path(__file__).parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
+
+def runLoader():
+    import core.Utils
+    if core.Utils.PathHelper.isFileExists(project_root / '_loader_.py'):
+        # actually, loader just need to exec it contents
+        importlib.import_module('_loader_', str(project_root / '_loader_.py'))
+
+
+runLoader()
 # Skip QApplication fixture for now due to pytest-qt compatibility issue
 # from PySide6.QtWidgets import QApplication
 
@@ -104,12 +115,12 @@ def real_publisher():
     from core.Observer import Publisher
     publisher = Publisher()
     # Store original state
-    original_global = publisher._globalSubscribers.copy()
-    original_events = {k: v.copy() for k, v in publisher._eventSubscribers.items()}
+    original_global = publisher.globalSubscribers.copy()
+    original_events = {k: v.copy() for k, v in publisher.eventSpecificSubscribers.items()}
     yield publisher
     # Restore original state
-    publisher._globalSubscribers = original_global
-    publisher._eventSubscribers = original_events
+    publisher.globalSubscribers = original_global
+    publisher.eventSpecificSubscribers = original_events
 
 
 # ============================================================================

@@ -88,38 +88,46 @@ graph TB
 
 ### Core Components
 
-1. [**Application Context**](01-application-context.md) - QtAppContext lifecycle management
-2. [**Dependency Injection**](02-dependency-injection.md) - ServiceLocator patterns
-3. [**Observer Pattern**](03-observer-pattern.md) - Publisher/Subscriber event system
-4. [**Controller Architecture**](04-controller-architecture.md) - BaseController and slot_map
-5. [**Widget Management**](05-widget-management.md) - WidgetManager utilities
-6. [**Configuration**](06-configuration.md) - Config singleton
-7. [**Logging**](07-logging.md) - Loguru-based logging
-8. [**Network Manager**](08-network-manager.md) - Qt network integration
-9. [**Exceptions**](09-exceptions.md) - Exception handling
-10. [**Utilities**](10-utilities.md) - PathHelper, OsHelper, PythonHelper, WidgetUtils
-11. [**Decorators**](11-decorators.md) - @singleton, @catchExceptInMsgBox, etc.
+| Component | Description |
+|-----------|-------------|
+| [**Application Context**](01-application-context.md) | QtAppContext lifecycle management |
+| [**Dependency Injection**](02-dependency-injection.md) | ServiceLocator patterns |
+| [**Observer Pattern**](03-observer-pattern.md) | Publisher/Subscriber event system |
+| [**Controller Architecture**](04-controller-architecture.md) | BaseController and slot_map |
+| [**Widget Management**](05-widget-management.md) | WidgetManager utilities |
+| [**Configuration**](06-configuration.md) | Config singleton |
+| [**Logging**](07-logging.md) | Loguru-based logging |
+| [**Network Manager**](08-network-manager.md) | Qt network integration |
+| [**Exceptions**](09-exceptions.md) | Exception handling |
+| [**Utilities**](10-utilities.md) | PathHelper, OsHelper, PythonHelper, WidgetUtils |
+| [**Decorators**](11-decorators.md) | @singleton, @catchExceptInMsgBox, etc. |
 
 ### Task System
 
-12. [**Task System Overview**](12-task-system-overview.md) - Architecture and components
-13. [**AbstractTask**](13-abstract-task.md) - Base task class
-14. [**Task Chain**](14-task-chain.md) - Sequential task execution
-15. [**Task Manager**](15-task-manager.md) - TaskManagerService API
+| Component | Description |
+|-----------|-------------|
+| [**Task System Overview**](12-task-system-overview.md) | Architecture and components |
+| [**AbstractTask**](13-abstract-task.md) | Base task class |
+| [**Task Chain**](14-task-chain.md) | Sequential task execution |
+| [**Task Manager**](15-task-manager.md) | TaskManagerService API |
 
 ### Advanced Features
 
-16. [**Acknowledgment System**](16-acknowledgment-system.md) - ACK/NACK protocol
-17. [**Contracts**](17-contracts.md) - Interfaces
-18. [**Extends**](18-extends.md) - Extensions
-19. [**Model**](19-model.md) - Data models
+| Component | Description |
+|-----------|-------------|
+| [**Acknowledgment System**](16-acknowledgment-system.md) | ACK/NACK protocol |
+| [**Contracts**](17-contracts.md) | Interfaces |
+| [**Extends**](18-extends.md) | Extensions |
+| [**Model**](19-model.md) | Data models |
 
 ### Practical Guides
 
-20. [**Common Use Cases**](20-common-use-cases.md) - Recipes và examples
-21. [**Pixi Guide**](22-pixi-guide.md) - Hướng dẫn sử dụng Pixi vs Pip
-22. [**CLI Scripts**](23-cli-scripts.md) - Hướng dẫn sử dụng scripts tiện ích
-23. [**Testing**](24-testing.md) - Hướng dẫn chạy test và viết test
+| Component | Description |
+|-----------|-------------|
+| [**Common Use Cases**](20-common-use-cases.md) | Recipes và examples |
+| [**Pixi Guide**](22-pixi-guide.md) | Hướng dẫn sử dụng Pixi vs Pip |
+| [**CLI Scripts**](23-cli-scripts.md) | Hướng dẫn sử dụng scripts tiện ích |
+| [**Testing**](24-testing.md) | Hướng dẫn chạy test và viết test |
 
 ## Key Concepts
 

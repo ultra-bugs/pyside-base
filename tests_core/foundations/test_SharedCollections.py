@@ -11,7 +11,6 @@
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
 """Unit tests for SharedCollection — no QApplication required."""
 
 import threading
@@ -36,6 +35,7 @@ def col(qapp):
 # ---------------------------------------------------------------------------
 # Mutation
 # ---------------------------------------------------------------------------
+
 
 class TestMutation:
     def testAdd(self, col):
@@ -87,6 +87,7 @@ class TestMutation:
 # ---------------------------------------------------------------------------
 # Query
 # ---------------------------------------------------------------------------
+
 
 class TestQuery:
     def testWhere(self, col):
@@ -153,13 +154,14 @@ class TestQuery:
         col.addMany([10, 20])
         lst = col.toList()
         assert lst == [10, 20]
-        lst.append(99)          # mutation of snapshot must NOT affect collection
+        lst.append(99)  # mutation of snapshot must NOT affect collection
         assert col.count() == 2
 
 
 # ---------------------------------------------------------------------------
 # Dunder helpers
 # ---------------------------------------------------------------------------
+
 
 class TestDunder:
     def testLen(self, col):
@@ -185,27 +187,23 @@ class TestDunder:
 # Thread safety
 # ---------------------------------------------------------------------------
 
+
 class TestThreadSafety:
     def testConcurrentAdd(self, qapp):
         col: SharedCollection = SharedCollection()
         threadCount = 10
         itemsPerThread = 100
-        threads = [
-            threading.Thread(target=lambda: [col.add(i) for i in range(itemsPerThread)])
-            for _ in range(threadCount)
-        ]
+        threads = [threading.Thread(target=lambda: [col.add(i) for i in range(itemsPerThread)]) for _ in range(threadCount)]
         for t in threads:
             t.start()
         for t in threads:
             t.join()
-
         assert col.count() == threadCount * itemsPerThread
 
     def testConcurrentAddRemove(self, qapp):
         col: SharedCollection = SharedCollection()
         col.addMany(list(range(100)))
         errors = []
-
         def worker():
             try:
                 for i in range(10):
@@ -214,11 +212,9 @@ class TestThreadSafety:
                     _ = col.toList()
             except Exception as e:
                 errors.append(e)
-
         threads = [threading.Thread(target=worker) for _ in range(8)]
         for t in threads:
             t.start()
         for t in threads:
             t.join()
-
         assert errors == [], f'Thread errors: {errors}'

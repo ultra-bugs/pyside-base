@@ -5,29 +5,32 @@ Base class for all tasks in the TaskSystem.
 Provides common functionality, lifecycle management, and Qt signals integration.
 """
 
-#                  M""""""""`M            dP
-#                  Mmmmmm   .M            88
-#                  MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
-#                  MMP  .MMMMM  88    88  88888"    88'  `88
-#                  M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
-#                  M         M  `88888P'  dP   `YP  `88888P'
-#                  MMMMMMMMMMM    -*-  Created by Zuko  -*-
+#              M""""""""`M            dP
+#              Mmmmmm   .M            88
+#              MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
+#              MMP  .MMMMM  88    88  88888"    88'  `88
+#              M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
+#              M         M  `88888P'  dP   `YP  `88888P'
+#              MMMMMMMMMMM    -*-  Created by Zuko  -*-
 #
-#                  * * * * * * * * * * * * * * * * * * * * *
-#                  * -    - -   F.R.E.E.M.I.N.D   - -    - *
-#                  * -  Copyright © 2026 (Z) Programing  - *
-#                  *    -  -  All Rights Reserved  -  -    *
-#                  * * * * * * * * * * * * * * * * * * * * *
+#              * * * * * * * * * * * * * * * * * * * * *
+#              * -    - -   F.R.E.E.M.I.N.D   - -    - *
+#              * -  Copyright © 2026 (Z) Programing  - *
+#              *    -  -  All Rights Reserved  -  -    *
+#              * * * * * * * * * * * * * * * * * * * * *
+
+#
 import abc
+import sys
 import threading
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import Self, TYPE_CHECKING, Any, Dict, Optional
 
 from PySide6 import QtCore
 
 from ..Logging import logger
-from .Exceptions import TaskCancellationException
+from .Exceptions import TaskCancellationException, TaskFailedException
 from .signals.TaskSignals import TaskSignals
 from .TaskState import TaskState
 from .TaskStatus import TaskStatus
@@ -38,14 +41,9 @@ if TYPE_CHECKING:
 logger = logger.bind(component='TaskSystem')
 
 
-
 class QRunnableABCMeta(type(QtCore.QRunnable), abc.ABCMeta):
     """Metaclass combining QRunnable's Shiboken metaclass with ABCMeta."""
 
-    pass
-
-
-class TaskFailedException(Exception):
     pass
 
 
@@ -108,14 +106,16 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
         QtCore.QRunnable.__init__(self)
         # Standalone QObject for signal emission (decoupled from QRunnable C++ lifecycle)
         self.signals = TaskSignals()
-        self.uuid = uuid.uuid4().hex
+        self.genUid()
         self.name = name
         self.description = description
         self.chainUuid = chainUuid
-        self._chainContext: Optional['ChainContext'] = None
+        if not hasattr(self, '_chainContext'):
+            self._chainContext: Optional['ChainContext'] = None
         # Lifecycle state — single source of truth for status, cancellation, pause
         self.taskState = TaskState(TaskStatus.PENDING)
         self.progress = 0
+        self.progressLabel: str = ''
         self.isPersistent = isPersistent
         self.maxRetries = maxRetries
         # Ensure >= 1
@@ -147,6 +147,10 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
         logger.debug(f'{self.__class__.__name__} Task created: {self.uuid} - {self.name}' + (f' (chain: {chainUuid})' if chainUuid else ''))
 
     serializables: Optional[Any] = None
+
+    def genUid(self):
+        if not hasattr(self, 'uuid') or not self.uuid:
+            self.uuid = uuid.uuid4().hex
 
     # ── Signal proxy properties (backward-compat) ─────────────────────────────
 
@@ -201,6 +205,7 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
             label: Optional label describing the current progress step
         """
         self.progress = max(0, min(100, value))
+        self.progressLabel = label
         logger.debug(f'Task {self.uuid} progress: {self.progress}%')
         self.progressUpdated.emit(self.uuid, self.progress, label)
 
@@ -247,10 +252,21 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
         Args:
             context: ChainContext instance to inject
         """
+        if hasattr(self, 'chainUuid') and self.chainUuid == self.uuid:
+            raise TaskFailedException('ctx should set for child')
         self._chainContext = context
         logger.debug(f'Task {self.uuid} received chain context from chain {context._chainUuid}')
+
     def getChainContext(self) -> 'ChainContext':
+        if not hasattr(self, 'uuid'):
+            self.genUid()
+        if not hasattr(self, '_chainContext') or self._chainContext is None:
+            if hasattr(self, 'chainUuid') and self.chainUuid != self.uuid:
+                raise TaskFailedException('ctx not set for child')
+            from .ChainContext import ChainContext
+            self._chainContext = ChainContext(self.uuid)
         return self._chainContext
+
     def isStopped(self) -> bool:
         """
         Check if task has been requested to stop.
@@ -284,12 +300,27 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
         logger.warning(f'Task {self.uuid} failed: {reason}')
         self.error = reason
         self.setStatus(TaskStatus.FAILED)
+
+        # 1. Catch the Exception hanging in the Thread (if the caller calls fail() from within an except block)
+        _, activeException, _ = sys.exc_info()
+
+        # 2. Handle the main Exception of Task
         if not exception:
             exception = TaskFailedException(reason)
-        self.errorException = exception
-        raise self.errorException
 
+        self.errorException = exception
+
+        # 3. Detonate: If an activeException is detected and it is different from the current error,
+        # We chain them together (Chain Exception)
+        if activeException and activeException is not exception:
+            raise self.errorException from activeException
+        else:
+            raise self.errorException
+    
     def serialize(self) -> Dict[str, Any]:
+        return self._baseSerialize()
+    
+    def _baseSerialize(self) -> Dict[str, Any]:
         """
         Serialize task to dictionary for persistence.
         Behavior:
@@ -324,6 +355,8 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
             for ins in mappedInstances.keys():
                 if isinstance(v, ins):
                     return getattr(v, mappedInstances[ins])
+            if hasattr(v, 'serialize') and callable(v.serialize):
+                return v.serialize()
             if hasattr(v, 'toDict') and callable(v.toDict):
                 return v.toDict()
             if hasattr(v, 'to_dict') and callable(v.to_dict):
@@ -332,6 +365,10 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
                 return v.__class__.__name__ + ': ' + str(v)
             if isinstance(v, datetime):
                 return v.isoformat()
+            if isinstance(v, TaskStatus):
+                return v.name
+            if isinstance(v, UniqueType):
+                return v.name
             if callable(v):
                 raise TypeError('Cannot serialize callable')
             return v
@@ -403,13 +440,25 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
         Should clean up resources (close files, kill processes, etc.)
         """
         pass
-    
+
+    def _performSelfCleanup(self) -> None:
+        pass
+
+    def _performChainCleanup(self) -> None:
+        pass
+
+    def _done(self) -> Self:
+        self._performSelfCleanup()
+        if self.chainUuid is not None and self.chainUuid == self.uuid:
+            self._performChainCleanup()
+        return self
+
     def getThreadNameForCurrentTask(self):
         # Sub-Task in chain will have same thead name
         if self._chainContext is not None and self._chainContext.get('_threadName') is not None:
             return str(self._chainContext.get('_threadName'))
             # TODO: add sub-task name
-        return self.uuid[:12] if not self.name else f'{self.name}::{self.uuid[:6]}'
+        return self.uuid[:12] if not self.name else f'{self.name}[{self.uuid[:6]}]'
 
     def run(self) -> None:
         """
@@ -434,18 +483,18 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
                 self.error = 'CANCELLED'
                 logger.info(f'Task {self.uuid} was cancelled during execution')
             elif self.status == TaskStatus.FAILED:
-                logger.info(f'Task {self.uuid} failed silently: {self.error}', exc_info=True)
+                logger.info(f'Task {self.uuid} failed silently: {self.error}')
             else:
                 self.setStatus(TaskStatus.COMPLETED)
                 logger.info(f'Task {self.uuid} completed successfully')
         except TaskCancellationException as e:
             self.error = 'CANCELLED'
             self.setStatus(TaskStatus.CANCELLED)
-            logger.info(f'Task {self.uuid} was cancelled: {e}', exc_info=True)
+            logger.info(f'Task {self.uuid} was cancelled: {e}')
         except Exception as e:
             self.error = f'{e.__class__.__name__}: {e}'
             self.setStatus(TaskStatus.FAILED)
-            logger.opt(exception=e).error(f'Task {self.uuid} failed with error: {e}', exc_info=True)
+            logger.opt(exception=e).error(f'Task {self.uuid} failed with error: {e}')
             self.errorException = e
             if not self.failSilently:
                 raise
@@ -455,4 +504,5 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
             logger.info(f'Task {self.uuid} finished in {duration:.2f}s with status {self.status.name}')
             err: Optional[Dict[str, str | Exception]] = {'message': self.error, 'exception': self.errorException} if self.error else None
             self.taskFinished.emit(self.uuid, self, self.result, err)
+            self._done()
             threading.current_thread().name = _originalThreadName

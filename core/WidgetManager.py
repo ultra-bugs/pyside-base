@@ -36,7 +36,16 @@ class WidgetManager:
         self.type = 1 if 'Controller' in clsName else 2
         self.widgetClassName = clsName
         from core.QtAppContext import QtAppContext
-        self.app: Union[QApplication, QCoreApplication] = QtAppContext()
+        self.app: Union[QApplication, QCoreApplication] = QtAppContext.globalInstance().app
+
+    @staticmethod
+    def _attrOrCall(attr):
+        if callable(attr):
+            try:
+                return attr()
+            except TypeError:
+                pass
+        return attr
 
     def get(self, widgetName: str) -> Union[QObject, QWidget, QTextEdit, QLabel, QLineEdit, QTableView, QTableWidget, QSpinBox]:
         """Get a widget by name
@@ -57,14 +66,9 @@ class WidgetManager:
             attr = getattr(currentParent, key)
             if key != keys[-1]:
                 resolved.append(key)
-                currentParent = attr
+                currentParent = self._attrOrCall(attr)
                 continue
-            if callable(attr):
-                try:
-                    return attr()
-                except TypeError:
-                    return attr
-            return attr
+            return self._attrOrCall(attr)
 
     def set(self, name: str, value, saveToConfig: bool = False) -> None:
         """Set a widget attribute value

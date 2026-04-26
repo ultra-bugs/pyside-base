@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "UltraBugz Pyside Base",
-    "version": "2026.2.0.0",
+    "version": "2026.2.1.0",
     "debug": false
   },
   "ui": {

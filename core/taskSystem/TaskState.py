@@ -62,7 +62,6 @@ class TaskState:
     @property
     def current(self) -> TaskStatus:
         """Current TaskStatus enum value.
-
         Backward-compatible: ``task.status == TaskStatus.RUNNING`` still works
         when AbstractTask exposes ``status`` as a property returning this.
         """

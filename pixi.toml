@@ -1,6 +1,6 @@
 [workspace]
 name = "pyside_base"
-version = "2026.2.0.0"
+version = "2026.2.1.0"
 description = "Qt/PySide6 application base with task system and utilities"
 channels = ["conda-forge"]
 platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]

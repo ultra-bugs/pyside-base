@@ -24,11 +24,13 @@ from ..Logging import logger
 # Initialize logger for TaskSystem
 logger = logger.bind(component='TaskSystem')
 
+
 class TaskSystemException(AppException):
     """
     Base exception for all TaskSystem-related errors."""
 
     pass
+
 
 class TaskFailedException(TaskSystemException):
     pass
@@ -36,7 +38,9 @@ class TaskFailedException(TaskSystemException):
 
 class TaskUniqueViolationException(TaskSystemException):
     """Raised when a unique task constraint is violated."""
+
     pass
+
 
 class TaskNotFoundException(TaskSystemException):
     """

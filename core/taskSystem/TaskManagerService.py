@@ -5,26 +5,29 @@ Main orchestrator for the TaskSystem. Coordinates TaskQueue, TaskTracker, and Ta
 Provides the primary API for other parts of the application to interact with tasks.
 """
 
-#                  M""""""""`M            dP
-#                  Mmmmmm   .M            88
-#                  MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
-#                  MMP  .MMMMM  88    88  88888"    88'  `88
-#                  M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
-#                  M         M  `88888P'  dP   `YP  `88888P'
-#                  MMMMMMMMMMM    -*-  Created by Zuko  -*-
+#              M""""""""`M            dP
+#              Mmmmmm   .M            88
+#              MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
+#              MMP  .MMMMM  88    88  88888"    88'  `88
+#              M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
+#              M         M  `88888P'  dP   `YP  `88888P'
+#              MMMMMMMMMMM    -*-  Created by Zuko  -*-
 #
-#                  * * * * * * * * * * * * * * * * * * * * *
-#                  * -    - -   F.R.E.E.M.I.N.D   - -    - *
-#                  * -  Copyright © 2026 (Z) Programing  - *
-#                  *    -  -  All Rights Reserved  -  -    *
-#                  * * * * * * * * * * * * * * * * * * * * *
-from typing import Any, Dict, List, Optional
+#              * * * * * * * * * * * * * * * * * * * * *
+#              * -    - -   F.R.E.E.M.I.N.D   - -    - *
+#              * -  Copyright © 2026 (Z) Programing  - *
+#              *    -  -  All Rights Reserved  -  -    *
+#              * * * * * * * * * * * * * * * * * * * * *
+
+#
+from typing import Any, Dict, List, Optional, Union
 
 from PySide6 import QtCore
 
+from .ScheduleInfo import ScheduleInfo, ScheduleInfoFactory
 from ..Config import Config
 from ..Logging import logger
-from ..Observer import Publisher, Subscriber
+from ..Observer import Publisher, Subscriber, UpdatableMixin
 from . import AbstractTask
 from .ChainRetryBehavior import ChainRetryBehavior
 from .Exceptions import TaskNotFoundException
@@ -63,7 +66,7 @@ def _setTaskSystemLogging(enabled: bool) -> None:
             _rootLogger.disable(mod)
 
 
-class TaskManagerService(QtCore.QObject):
+class TaskManagerService(QtCore.QObject, UpdatableMixin):
     """
     Central orchestrator for the TaskSystem.
 
@@ -94,8 +97,8 @@ class TaskManagerService(QtCore.QObject):
             publisher: Publisher instance for Observer pattern
             config: Configuration instance
         """
-        Subscriber.__init__(self, events=['TaskRequest'], isGlobalSubscriber=True)
         QtCore.QObject.__init__(self)
+        Subscriber.__init__(self, events=['TaskRequest'], isGlobalSubscriber=True)
         self.signals = TaskManagerSignals()
         self._publisher = publisher
         self._config = config
@@ -160,6 +163,8 @@ class TaskManagerService(QtCore.QObject):
         Suppresses verbose TaskSystem logs during loading.
         """
         logger.info('TaskManagerService post-boot: loading persisted state...')
+        # Start queue worker after storage is available (ServiceProvider lifecycle)
+        self._taskQueue.start()
         self.setLoggingEnabled(False)
         try:
             self.loadState()
@@ -183,7 +188,7 @@ class TaskManagerService(QtCore.QObject):
         maxConcurrent = self._config.get('taskSystem.maxConcurrentTasks', 3)
         self.setMaxConcurrentTasks(maxConcurrent)
 
-    def addTask(self, task: Any, scheduleInfo: Optional[Dict[str, Any]] = None) -> None:
+    def addTask(self, task: Any, scheduleInfo: Optional[Union[ScheduleInfo, Dict[str, Any]]] = None) -> None:
         """
         Add a task for execution.
         Args:
@@ -194,9 +199,11 @@ class TaskManagerService(QtCore.QObject):
                 - intervalSeconds: int for 'interval' trigger
                 - Other cron-specific kwargs
         """
-        if scheduleInfo:
-            logger.info(f'Scheduling task: {task.uuid} - {task.name}')
-            self._taskScheduler.addScheduledTask(task, **scheduleInfo)
+        if scheduleInfo is not None:
+            # Coerce dict → typed container at the facade boundary
+            info = ScheduleInfoFactory.ensure(scheduleInfo)
+            logger.info(f'Scheduling task: {task.uuid} - {task.name} [{info.trigger}]')
+            self._taskScheduler.addScheduledTask(task, info)
         else:
             logger.info(f'Adding task to queue: {task.uuid} - {task.name}')
             self._taskQueue.addTask(task)
@@ -335,6 +342,49 @@ class TaskManagerService(QtCore.QObject):
             logger.error(f'Cannot resume task {uuid}: not found')
             raise
 
+    def pauseAll(self) -> None:
+        """Pause all currently RUNNING tasks."""
+        activeTasks = list(self._taskTracker._activeTasks.items())
+        paused = 0
+        for uuid, task in activeTasks:
+            try:
+                if task.status == TaskStatus.RUNNING:
+                    task.pause()
+                    paused += 1
+            except Exception as e:
+                logger.warning(f'Failed to pause task {uuid}: {e}')
+        logger.info(f'pauseAll: paused {paused} tasks')
+
+    def resumeAll(self) -> None:
+        """Resume all currently PAUSED tasks."""
+        activeTasks = list(self._taskTracker._activeTasks.items())
+        resumed = 0
+        for uuid, task in activeTasks:
+            try:
+                if task.status == TaskStatus.PAUSED:
+                    task.resume()
+                    resumed += 1
+            except Exception as e:
+                logger.warning(f'Failed to resume task {uuid}: {e}')
+        logger.info(f'resumeAll: resumed {resumed} tasks')
+
+    def stopAll(self) -> None:
+        """Cancel all active (RUNNING/PENDING/PAUSED) tasks."""
+        activeTasks = list(self._taskTracker.getAllActiveTasks().values())
+        stopped = 0
+        for uuid, task in activeTasks:
+            try:
+                if task.status in (TaskStatus.RUNNING, TaskStatus.PENDING, TaskStatus.PAUSED, TaskStatus.RETRYING):
+                    task.cancel()
+                    stopped += 1
+            except Exception as e:
+                logger.warning(f'Failed to stop task {uuid}: {e}')
+        logger.info(f'stopAll: cancelled {stopped} tasks')
+
+    def hasPausedTasks(self) -> bool:
+        """Return True if any active task is currently PAUSED."""
+        return any(t.status == TaskStatus.PAUSED for t in self._taskTracker._activeTasks.values())
+
     def getTaskStatus(self, uuid: str) -> TaskStatus:
         """
         Get current status of a task.
@@ -438,6 +488,7 @@ class TaskManagerService(QtCore.QObject):
         """
         logger.info('Shutting down TaskManagerService...')
         self.saveState()
+        self._taskQueue.stop()
         self._taskScheduler.shutdown(wait=True)
         logger.info('TaskManagerService shutdown complete')
 
@@ -467,7 +518,8 @@ class TaskManagerService(QtCore.QObject):
             task = self._taskTracker._activeTasks.get(uuid)
             if task:
                 self.taskStatusUpdated.emit(uuid, task.status)
-                self.taskProgressUpdated.emit(uuid, task.progress)
+                label = getattr(task, 'progressLabel', '')
+                self.taskProgressUpdated.emit(uuid, task.progress, label)
         except Exception as e:
             logger.warning(f'Error handling task update for {uuid}: {e}')
 

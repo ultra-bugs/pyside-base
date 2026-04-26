@@ -11,8 +11,6 @@
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
-#
 """
 TaskSystem test package.
 """

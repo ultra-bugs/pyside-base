@@ -104,7 +104,7 @@ def test_cancel(qtbot):
 
 def test_fail():
     """Test fail method."""
-    from core.taskSystem.AbstractTask import TaskFailedException
+    from core.taskSystem.Exceptions import TaskFailedException
     task = ConcreteTask(name='Test')
     reason = 'Test failure reason'
     with pytest.raises(TaskFailedException):

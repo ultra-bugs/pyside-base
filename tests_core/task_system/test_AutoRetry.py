@@ -91,11 +91,11 @@ def test_signalDisconnectedAfterPop(taskQueue):
     task = ConcreteTask(name='DisconnectTask')
     task.setStatus(TaskStatus.RUNNING)
     taskQueue._runningTasks[task.uuid] = task
-    task.taskFinished.connect(taskQueue._handleTaskCompletion)
+    task.taskFinished.connect(taskQueue._handleTaskCompletionInternal)
     # Simulate pop + disconnect (as done in _handleTaskCompletion)
     taskQueue._runningTasks.pop(task.uuid)
     try:
-        task.taskFinished.disconnect(taskQueue._handleTaskCompletion)
+        task.taskFinished.disconnect(taskQueue._handleTaskCompletionInternal)
         disconnected = True
     except RuntimeError:
         disconnected = False

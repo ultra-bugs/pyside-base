@@ -11,7 +11,6 @@
 #                  * -  Copyright © 2026 (Z) Programing  - *
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
-
 from __future__ import annotations
 
 from typing import Callable, Generic, Iterator, Optional, TypeVar, overload
@@ -34,7 +33,7 @@ class SharedCollection(Generic[T]):
     Usage::
 
         col = ctx.getCollection('myItems')
-        col.add(item).add(item2)          # fluent mutation
+        col.add(item).add(item2)  # fluent mutation
         results = col.where(lambda x: x.active).orderBy(lambda x: x.name)
     """
 
@@ -63,7 +62,6 @@ class SharedCollection(Generic[T]):
 
     def addIfAbsent(self, item: T) -> bool:
         """Atomically add *item* only if it is not already present.
-
         Returns:
             True if item was added, False if it already existed.
         """

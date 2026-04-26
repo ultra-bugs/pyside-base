@@ -256,7 +256,7 @@ def test_task_chain_task_exhausts_max_retries():
     task1 = MockTask('Task1', should_succeed=False, maxRetries=2)
     task2 = MockTask('Task2')
     chain = TaskChain(name='Test Chain', tasks=[task1, task2])
-    from core.taskSystem.AbstractTask import TaskFailedException
+    from core.taskSystem.Exceptions import TaskFailedException
     with pytest.raises(TaskFailedException):
         chain.run()
     # Task1 should have been retried maxRetries times
@@ -278,7 +278,7 @@ def test_task_chain_stop_chain_behavior():
     task2 = MockTask('Task2')
     retry_map = {'MockTask': ChainRetryBehavior.STOP_CHAIN}
     chain = TaskChain(name='Test Chain', tasks=[task1, task2], retryBehaviorMap=retry_map)
-    from core.taskSystem.AbstractTask import TaskFailedException
+    from core.taskSystem.Exceptions import TaskFailedException
     with pytest.raises(TaskFailedException):
         chain.run()
     assert task1.status == TaskStatus.FAILED
@@ -312,7 +312,7 @@ def test_task_chain_retry_chain_behavior():
     task3 = MockTask('Task3')
     retry_map = {'MockTask': ChainRetryBehavior.RETRY_CHAIN}
     chain = TaskChain(name='Test Chain', tasks=[task1, task2, task3], retryBehaviorMap=retry_map, maxRetries=1)
-    from core.taskSystem.AbstractTask import TaskFailedException
+    from core.taskSystem.Exceptions import TaskFailedException
     with pytest.raises(TaskFailedException):
         chain.run()
     # Task1 should have been executed multiple times (chain retried)
