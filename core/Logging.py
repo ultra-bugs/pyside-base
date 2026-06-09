@@ -63,6 +63,17 @@ class _LoguruWrappedLogger:
         self.__dict__['warn'] = _loguru.warning
         from core.Config import Config
         cfg = Config()
+        allLevels = list(FilterFactory._CUSTOM_LEVELS) + list(cfg.get('logging.customLevels', []))
+        nextNo = FilterFactory._AUTO_NO_BASE
+        for entry in allLevels:
+            resolved = FilterFactory._resolveEntry(entry, nextNo)
+            nextNo = resolved['no'] + 1
+            name = resolved.pop('name')
+            FilterFactory._LEVEL_NO[name] = resolved['no']
+            try:
+                _loguru.level(name)
+            except ValueError:
+                _loguru.level(name, **resolved)
         if cfg.get('logging.sinkManAutoCommit', False):
             self.__dict__['_sink_manager'] = SinkCollectionManager()
             self._setup()
@@ -75,10 +86,10 @@ class _LoguruWrappedLogger:
         cfg = Config()
         logDir = PathHelper.buildDataPath('logs')
         PathHelper.ensureDirExists(logDir)
-        module_levels = cfg.get('logging.module_levels', {})
+        moduleLevels = cfg.get('logging.moduleLvs', {})
         default_level = cfg.get('logging.level', 'DEBUG')
-        mod_filter = FilterFactory.make(module_levels, default_level) if module_levels else None
-        LOG_FMT = '{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | T:{thread} | {name}:{function}:{line} | {message}'
+        mod_filter = FilterFactory.make(moduleLevels, default_level) if moduleLevels else None
+        LOG_FMT = '{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | T:{thread.name} | {name}:{function}:{line} | {message}'
         CON_FMT = (
             '<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | '
             '<green>T:{thread.name}</green>|<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | '
@@ -119,10 +130,10 @@ class _LoguruWrappedLogger:
         cfg = Config()
         logDir = PathHelper.buildDataPath('logs')
         PathHelper.ensureDirExists(logDir)
-        module_levels = cfg.get('logging.module_levels', {})
+        moduleLevels = cfg.get('logging.moduleLvs', {})
         default_level = cfg.get('logging.level', 'DEBUG')
-        mod_filter = FilterFactory.make(module_levels, default_level) if module_levels else None
-        LOG_FMT = '{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | T:{thread} | {name}:{function}:{line} | {message}'
+        mod_filter = FilterFactory.make(moduleLevels, default_level) if moduleLevels else None
+        LOG_FMT = '{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | T:{thread.name} | {name}:{function}:{line} | {message}'
         CON_FMT = (
             '<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | '
             '<green>T:{thread.name}</green>|<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | '

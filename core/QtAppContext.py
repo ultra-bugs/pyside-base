@@ -67,6 +67,13 @@ class QtAppContext(QObject):
         sys.path.append(str(projectRoot))
         os.environ['QT_AUTO_SCREEN_SCALE_FACTOR'] = '1'
 
+    def _resolveConsoleMode(self) -> bool:
+        """Check env var and config to decide headless mode."""
+        envVal = os.getenv('PSA_DISABLE_GUI', '').lower()
+        if envVal in ('true', '1', 'yes', 'on'):
+            return True
+        return bool(self._config.get('app.disableGui', False))
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
@@ -77,8 +84,14 @@ class QtAppContext(QObject):
             return
         self.__class__._initialized = True
         self._ensurePyPath()
+        self._config = Config()
+        self._consoleMode = self._resolveConsoleMode()
         super().__init__()
-        self._app: Union[QApplication, QCoreApplication] = QApplication.instance() or QApplication(sys.argv)
+        if self._consoleMode:
+            self._app: Union[QApplication, QCoreApplication] = QCoreApplication.instance() or QCoreApplication(sys.argv)
+            logger.info('Console mode — using QCoreApplication.')
+        else:
+            self._app: Union[QApplication, QCoreApplication] = QApplication.instance() or QApplication(sys.argv)
         self._isBootstrapped = False
         self._isServiceProviderRegistered = False
         self.loop = None  # qasync QEventLoop, set during bootstrap()
@@ -88,7 +101,7 @@ class QtAppContext(QObject):
         self._sharedCollections: dict[str, SharedCollection] = {}
         self._collectionLock = QMutex()
         self._services = ServiceLocator()
-        self._config: Optional[Config] = None
+        self._config: Optional[Config] = Config()
         self._publisher: Optional[Publisher] = None
         self._networkManager: Optional[NetworkManager] = None
         self._taskManager = None
@@ -109,6 +122,7 @@ class QtAppContext(QObject):
 
     def _setupAppNameIcon(self) -> Self:
         from core.Utils import AppHelper
+
         app_name = AppHelper.getAppName()
         app_version = AppHelper.getAppVersion()
         self._app.setApplicationName(f'{app_name}')
@@ -156,11 +170,12 @@ class QtAppContext(QObject):
             logger.info('Bootstrapping Application Context...')
             self.appBooting.emit()
             self._load_environment()
-            import asyncio
-            from qasync import QEventLoop
-            self.loop = QEventLoop(self._app)
-            asyncio.set_event_loop(self.loop)
-            self._config = Config()
+            if not self._consoleMode:
+                import asyncio
+                from qasync import QEventLoop
+
+                self.loop = QEventLoop(self._app)
+                asyncio.set_event_loop(self.loop)
             self.registerService('config', self._config)
             self._publisher = Publisher.instance()
             self.registerService('publisher', self._publisher)
@@ -178,11 +193,15 @@ class QtAppContext(QObject):
             if self.isFeatureEnabled('tasks'):
                 logger.info('Feature [Tasks]: ENABLED')
                 from core.taskSystem.TaskManagerService import TaskManagerService
+
                 self._taskManager = TaskManagerService(self._publisher, self._config)
                 self.registerService('taskManager', self._taskManager)
             else:
                 logger.warning('Feature [Tasks]: DISABLED (via PSA_ENABLE_TASKS)')
-            self._setupTheme()._setupAppNameIcon()
+            if not self._consoleMode:
+                self._setupTheme()._setupAppNameIcon()
+            else:
+                logger.info('Console mode — skipping theme and app icon setup.')
             self._isBootstrapped = True
             self._loadAppProviders()
             self._publisher.notify('app.ready')
@@ -195,6 +214,7 @@ class QtAppContext(QObject):
     def _schedulePostBootInit(self) -> None:
         """Schedule heavy subsystem init for next event loop tick (post-boot)."""
         from PySide6.QtCore import QTimer
+
         if self._taskManager:
             QTimer.singleShot(0, self._taskManager.booted)
 
@@ -210,6 +230,7 @@ class QtAppContext(QObject):
         import importlib
         from core.contracts.ServiceProvider import ServiceProvider
         from core.Utils import WidgetUtils
+
         # --- Phase 0: Import and instantiate ---
         providerInstances = {}  # className -> instance
         providerClasses = {}  # className -> class
@@ -308,9 +329,11 @@ class QtAppContext(QObject):
         return None
 
     def run(self) -> int:
-        """Start the qasync event loop (replaces QApplication.exec())."""
+        """Start the event loop. Uses qasync in GUI mode, QCoreApplication.exec in console mode."""
         if not self._isBootstrapped:
             self.bootstrap()
+        if self._consoleMode:
+            return self._app.exec()
         with self.loop:
             self.loop.run_forever()
             return 0
@@ -354,6 +377,10 @@ class QtAppContext(QObject):
         """Cleanup all services associated with a tag."""
         self._services.releaseScope(tag)
         return self
+
+    @property
+    def consoleMode(self) -> bool:
+        return self._consoleMode
 
     @property
     def config(self) -> Config:

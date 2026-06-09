@@ -1,6 +1,7 @@
 # Common Use Cases
 
 > **Practical recipes for common scenarios**
+> **Last synced**: `2026-06-09`
 
 ## Creating a New Controller
 
@@ -299,7 +300,7 @@ chain = ctx.taskManager.addChainTask(
     retryBehaviorMap={
         'Fetch': ChainRetryBehavior.RETRY_TASK,
         'Process': ChainRetryBehavior.SKIP_TASK,
-        'Save': ChainRetryBehavior.FAIL_CHAIN
+        'Save': ChainRetryBehavior.STOP_CHAIN
     }
 )
 ```

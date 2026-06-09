@@ -37,9 +37,14 @@ import random
 import threading
 from typing import Any, Dict, List, Optional
 
+import requests as originalRequests
+from curl_cffi import CurlOpt
+from curl_cffi import requests as curlRequests
 from curl_cffi.requests import Session as CurlSession
 
 from core.Logging import logger
+
+_IPRESOLVE_V4 = 1  # CURL_IPRESOLVE_V4: force IPv4 to avoid SOCKS5 IPv6 rejection
 
 
 class BrowserProfile:
@@ -79,22 +84,29 @@ class AntiDetectSession(CurlSession):
     _profile_pool: List[str] = BrowserProfile.allProfiles.copy()
     _current_profile_index = 0
 
-    def __init__(self, impersonate: Optional[str] = None, autoRotate: bool = False, profilePool: Optional[List[str]] = None, **kwargs):
+    def __init__(self, impersonate: Optional[str] = None, autoRotate: bool = False, profilePool: Optional[List[str]] = None, disableIpv6: bool = True, **kwargs):
         """
         Initialize AntiDetectSession
         Args:
             impersonate: Browser profile to impersonate. If None, uses random profile
-            auto_rotate: If True, rotate profile on each request
-            profile_pool: Custom list of profiles to rotate through
+            autoRotate: If True, rotate profile on each request
+            profilePool: Custom list of profiles to rotate through
+            disableIpv6: Force IPv4-only resolution (default True) — prevents SOCKS5 proxy
+                         errors when the proxy has no IPv6 external interface configured
             **kwargs: Additional arguments passed to curl_cffi.Session
         """
         if impersonate is None:
             impersonate = self._get_next_profile()
-        super().__init__(impersonate=impersonate, **kwargs)
+        self._disable_ipv6 = disableIpv6
+        if disableIpv6:
+            curl_options = kwargs.pop('curl_options', {}) or {}
+            curl_options.setdefault(CurlOpt.IPRESOLVE, _IPRESOLVE_V4)
+            kwargs['curl_options'] = curl_options
+        super().__init__(impersonate=str(impersonate), **kwargs)
         self._auto_rotate = autoRotate
         self._profile_pool = profilePool or BrowserProfile.allProfiles
         self._current_impersonate = impersonate
-        logger.debug(f'AntiDetectSession initialized with profile: {impersonate}')
+        logger.debug(f'AntiDetectSession initialized with profile: {impersonate}, ipv6_disabled={disableIpv6}')
 
     @classmethod
     def _get_next_profile(cls) -> str:
@@ -117,7 +129,8 @@ class AntiDetectSession(CurlSession):
         if profile is None:
             profile = self._get_next_profile()
         self.close()
-        super().__init__(impersonate=profile)
+        curl_options = {CurlOpt.IPRESOLVE: _IPRESOLVE_V4} if self._disable_ipv6 else {}
+        super().__init__(impersonate=profile, curl_options=curl_options)
         self._current_impersonate = profile
         logger.debug(f'Rotated to profile: {profile}')
         return profile
@@ -166,8 +179,8 @@ def installAntiDetectSession(autoRotate: bool = False, profilePool: Optional[Lis
         auto_rotate: Enable auto-rotation for all sessions
         profile_pool: Custom profile pool for rotation
     Example:
-        >>> from core.extends import install_anti_detect_session
-        >>> install_anti_detect_session(auto_rotate=True)
+        >>> from core.extends import installAntiDetectSession
+        >>> installAntiDetectSession(auto_rotate=True)
         >>> import requests
         >>> response = requests.get('https://httpbin.org/headers')
         >>> print(response.status_code)

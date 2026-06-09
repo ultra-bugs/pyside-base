@@ -1,6 +1,7 @@
 # Decorators
 
-> **@singleton, @autoStrip, @catchExceptInMsgBox, SignalBlocker**
+> **@singleton, @autoStrip, @catchExceptInMsgBox, @cachedWithTtl, SignalBlocker**
+> **Last synced**: `2026-06-09`
 
 ## @singleton
 
@@ -49,19 +50,35 @@ from core.Decorators import catchExceptInMsgBox
 
 @catchExceptInMsgBox
 def riskyOperation():
-    # If exception occurs, shows message box
+    # If exception occurs, logs it and shows error message box
     raise ValueError('Something went wrong')
-
-# With custom error message
-@catchExceptInMsgBox(errorMsg='Operation failed')
-def anotherOperation():
-    raise ValueError('Error')
-
-# Re-raise after showing
-@catchExceptInMsgBox(reRaise=True)
-def criticalOperation():
-    raise ValueError('Critical error')
 ```
+
+**Signature**: `catchExceptInMsgBox(func, errorMsg=None, onlyExceptions=None, reRaise=True, addExecInfo=True)`
+
+- `reRaise` defaults to `True` — exception is re-raised after showing the dialog
+- `addExecInfo` defaults to `True` — traceback is shown in the dialog's detail section
+- `errorMsg` — custom message for the dialog; defaults to `'Runtime error in {func_name}: {exception}'`
+- This decorator must be used **directly** (`@catchExceptInMsgBox`), not as a factory (`@catchExceptInMsgBox(errorMsg='...')` would fail since `func` is a required positional arg)
+
+## @cachedWithTtl
+
+Cache function results with a time-to-live expiry:
+
+```python
+from core.Decorators import cachedWithTtl
+
+@cachedWithTtl(5000)  # Cache for 5000ms (5 seconds)
+def expensiveQuery(userId: int):
+    # Result is cached; re-executed only after TTL expires
+    return db.fetchUser(userId)
+
+# Inspect / clear cache
+expensiveQuery.cache_info()   # {'size': N, 'ttlMs': 5000}
+expensiveQuery.cache_clear()  # Invalidate all cached entries
+```
+
+Cache key is derived from `(*args, **kwargs)`. Each unique argument combination is cached separately.
 
 ## SignalBlocker
 

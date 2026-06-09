@@ -5,27 +5,29 @@ Base class for all tasks in the TaskSystem.
 Provides common functionality, lifecycle management, and Qt signals integration.
 """
 
-#              M""""""""`M            dP
-#              Mmmmmm   .M            88
-#              MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
-#              MMP  .MMMMM  88    88  88888"    88'  `88
-#              M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
-#              M         M  `88888P'  dP   `YP  `88888P'
-#              MMMMMMMMMMM    -*-  Created by Zuko  -*-
+#                  M""""""""`M            dP
+#                  Mmmmmm   .M            88
+#                  MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
+#                  MMP  .MMMMM  88    88  88888"    88'  `88
+#                  M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
+#                  M         M  `88888P'  dP   `YP  `88888P'
+#                  MMMMMMMMMMM    -*-  Created by Zuko  -*-
 #
-#              * * * * * * * * * * * * * * * * * * * * *
-#              * -    - -   F.R.E.E.M.I.N.D   - -    - *
-#              * -  Copyright © 2026 (Z) Programing  - *
-#              *    -  -  All Rights Reserved  -  -    *
-#              * * * * * * * * * * * * * * * * * * * * *
-
-#
+#                  * * * * * * * * * * * * * * * * * * * * *
+#                  * -    - -   F.R.E.E.M.I.N.D   - -    - *
+#                  * -  Copyright © 2026 (Z) Programing  - *
+#                  *    -  -  All Rights Reserved  -  -    *
+#                  * * * * * * * * * * * * * * * * * * * * *
 import abc
+import itertools
 import sys
 import threading
 import uuid
 from datetime import datetime
-from typing import Self, TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Self
+
+_slotCounter = itertools.count()
+_threadLocal = threading.local()
 
 from PySide6 import QtCore
 
@@ -316,10 +318,10 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
             raise self.errorException from activeException
         else:
             raise self.errorException
-    
+
     def serialize(self) -> Dict[str, Any]:
         return self._baseSerialize()
-    
+
     def _baseSerialize(self) -> Dict[str, Any]:
         """
         Serialize task to dictionary for persistence.
@@ -483,18 +485,18 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
                 self.error = 'CANCELLED'
                 logger.info(f'Task {self.uuid} was cancelled during execution')
             elif self.status == TaskStatus.FAILED:
-                logger.info(f'Task {self.uuid} failed silently: {self.error}')
+                logger.info(f'Task {self.uuid} failed silently: {self.error}', exc_info=True)
             else:
                 self.setStatus(TaskStatus.COMPLETED)
                 logger.info(f'Task {self.uuid} completed successfully')
         except TaskCancellationException as e:
             self.error = 'CANCELLED'
             self.setStatus(TaskStatus.CANCELLED)
-            logger.info(f'Task {self.uuid} was cancelled: {e}')
+            logger.info(f'Task {self.uuid} was cancelled: {e}', exc_info=True)
         except Exception as e:
             self.error = f'{e.__class__.__name__}: {e}'
             self.setStatus(TaskStatus.FAILED)
-            logger.opt(exception=e).error(f'Task {self.uuid} failed with error: {e}')
+            logger.opt(exception=e).error(f'Task {self.uuid} failed with error: {e}', exc_info=True)
             self.errorException = e
             if not self.failSilently:
                 raise

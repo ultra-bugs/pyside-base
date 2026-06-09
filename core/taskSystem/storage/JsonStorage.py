@@ -70,13 +70,14 @@ class JsonStorage(BaseStorage):
             try:
                 if os.path.exists(self._file_path):
                     with open(self._file_path, 'r', encoding='utf-8') as f:
-                        self._data = json.load(f)
+                        content = f.read().strip()
+                        self._data = json.loads(content) if content else {}
                 else:
                     self._data = {}
             except Exception as e:
                 logger.opt(exception=e).error(f'Failed to load task storage from {self._file_path}: {e}')
                 self._data = {}
-
+                
     def _save_file(self) -> None:
         """Save data to the JSON file."""
         with self._lock:
@@ -108,6 +109,17 @@ class JsonStorage(BaseStorage):
         """
         with self._lock:
             self._data[key] = value
+        self._save_file()
+
+    def saveBatch(self, items: Dict[str, Any]) -> None:
+        """
+        Save multiple key-value pairs in a single operation.
+        Adapter responsibility: JSON serialization + file I/O only.
+        Args:
+            items: Dictionary of key-value pairs to save.
+        """
+        with self._lock:
+            self._data.update(items)
         self._save_file()
 
     def clear(self, key: str) -> None:

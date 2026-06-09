@@ -1,6 +1,7 @@
 # Task System Overview
 
 > **Background task execution with scheduling, chaining, and persistence**
+> **Last synced**: `2026-06-09`
 
 ## Architecture
 
@@ -20,8 +21,8 @@ graph TB
     TaskTracker --> ActiveTasks[Active Tasks Dict]
     TaskTracker --> FailedTasks[Failed Tasks List]
     
-    TaskScheduler --> APScheduler
-    APScheduler -.->|scheduled time| TaskQueue
+    TaskScheduler --> QTimer[QTimer]
+    QTimer -.->|scheduled time| TaskQueue
     
     Storage -.->|load/save| TaskTracker
     
@@ -49,9 +50,9 @@ Central orchestrator:
 Execution engine:
 
 - QThreadPool-based
-- Concurrent task execution
-- Priority queue
+- FIFO concurrent task execution
 - Max concurrent tasks limit
+- DaemonWorker for serialized queue mutations (no race conditions)
 
 ### TaskTracker
 
@@ -61,16 +62,19 @@ State management:
 - Task status monitoring
 - **Reverse Indexing**: Efficient tag-based lookup
 - Runtime statistics (execution time, retry attempts)
-- Signals: taskAdded, taskRemoved, statusChanged
+- Signals: taskAdded, taskRemoved, taskStatusUpdated, taskFinished, failedTaskLogged
+
+> **Note**: `_isTaskChain()` uses MRO name traversal — `TaskChain` subclasses (e.g. `AmzCheckerChain`) are correctly recognized as chains and receive full chain lifecycle handling.
 
 ### TaskScheduler
 
 Scheduling engine:
 
-- APScheduler integration
-- Date-based scheduling
-- Interval scheduling
-- Cron scheduling
+- Pure Qt implementation — uses `QTimer`, no background threads
+- Date-based scheduling (one-time)
+- Interval scheduling (recurring)
+- Daily cron-style scheduling (hour:minute)
+- Persistence via JsonStorage
 
 ### Storage
 
@@ -93,7 +97,8 @@ stateDiagram-v2
     PAUSED --> CANCELLED: User cancels
     RUNNING --> PAUSED: User pauses
     PAUSED --> RUNNING: User resumes
-    FAILED --> PENDING: Retry
+    FAILED --> RETRYING: Retry scheduled
+    RETRYING --> PENDING: Retry starts
     COMPLETED --> [*]
     FAILED --> [*]
     CANCELLED --> [*]
@@ -117,7 +122,7 @@ for i in range(10):
 ```python
 from datetime import datetime, timedelta
 
-# Date-based
+# Date-based (one-time)
 taskManager.addTask(task, scheduleInfo={
     'trigger': 'date',
     'runDate': datetime.now() + timedelta(hours=1)
@@ -129,7 +134,7 @@ taskManager.addTask(task, scheduleInfo={
     'intervalSeconds': 60
 })
 
-# Cron
+# Daily cron
 taskManager.addTask(task, scheduleInfo={
     'trigger': 'cron',
     'hour': 9,
@@ -175,6 +180,9 @@ def executeLongOperation(self):
 ```python
 # Stop all network tasks
 taskManager.stopTasksByTag('Network')
+
+# Pause all tasks by tag
+taskManager.pauseTasksByTag('HeavyComputation')
 ```
 
 ### Persistence
@@ -190,25 +198,29 @@ taskManager.saveState()
 
 - **Main Thread**: TaskManagerService, TaskTracker, TaskScheduler
 - **Worker Threads**: Task execution (QThreadPool)
-- **Thread-safe**: All public APIs use QMutex
+- **Queue Worker Thread**: DaemonWorker serializes all queue mutations
+- **Thread-safe**: TaskTracker uses `threading.RLock`; TaskState uses `QMutex`
 
 ## Signals
 
 ### TaskManagerService
 
 ```python
-taskManager.taskAdded.connect(onTaskAdded)          # (uuid: str)
-taskManager.taskRemoved.connect(onTaskRemoved)      # (uuid: str)
-taskManager.statusChanged.connect(onStatusChanged)  # (uuid: str, status: TaskStatus)
-taskManager.progressUpdated.connect(onProgress)     # (uuid: str, progress: int)
+taskManager.taskAdded.connect(onTaskAdded)                   # (uuid: str)
+taskManager.taskRemoved.connect(onTaskRemoved)               # (uuid: str)
+taskManager.taskFinished.connect(onFinished)                 # (uuid: str, task: AbstractTask, result: Any, err: Optional[dict])
+taskManager.taskStatusUpdated.connect(onStatusChanged)       # (uuid: str, status: TaskStatus)
+taskManager.taskProgressUpdated.connect(onProgress)          # (uuid: str, progress: int, label: str)
+taskManager.failedTaskLogged.connect(onFailedTaskLogged)     # (taskInfo: dict)
+taskManager.systemReady.connect(onSystemReady)               # ()
 ```
 
 ### AbstractTask
 
 ```python
-task.statusChanged.connect(onStatusChanged)    # (status: TaskStatus)
-task.progressUpdated.connect(onProgress)       # (progress: int)
-task.taskFinished.connect(onFinished)          # ()
+task.statusChanged.connect(onStatusChanged)    # (uuid: str, status: TaskStatus)
+task.progressUpdated.connect(onProgress)       # (uuid: str, progress: int, label: str)
+task.taskFinished.connect(onFinished)          # (uuid: str, task: AbstractTask, result: Any, err: Optional[dict])
 ```
 
 ## Usage Pattern
@@ -229,13 +241,20 @@ class MyTask(AbstractTask):
                 return
             # Do work...
             self.setProgress(i)
+    
+    def _performCancellationCleanup(self):
+        pass
+    
+    @classmethod
+    def deserialize(cls, data: dict):
+        return cls(name=data['name'])
 
 # 3. Add to queue
 task = MyTask(name='My Task')
 taskManager.addTask(task)
 
 # 4. Monitor status
-taskManager.statusChanged.connect(lambda uuid, status: print(f'{uuid}: {status}'))
+taskManager.taskStatusUpdated.connect(lambda uuid, status: print(f'{uuid}: {status}'))
 ```
 
 ## Best Practices

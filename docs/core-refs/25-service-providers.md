@@ -1,6 +1,7 @@
 # ServiceProvider — App Service Bootstrap Architecture
 
 > **Declarative service registration with systemd-inspired ordering and build-time discovery**
+> **Last synced**: `2026-05-25`
 
 ## Overview
 

@@ -1,6 +1,7 @@
 # Utilities - Helper Classes
 
 > **PathHelper, OsHelper, PythonHelper, WidgetUtils**
+> **Last synced**: `2026-06-09`
 
 ## PathHelper
 
@@ -127,10 +128,14 @@ Qt widget helpers:
 ```python
 from core.Utils import WidgetUtils
 
-# Message boxes
+# Error/critical dialog
 WidgetUtils.showErrorMsgBox(parent, 'Error message', 'Error Title')
-WidgetUtils.showInfoMsgBox(parent, 'Info message', 'Info Title')
-WidgetUtils.showWarningMsgBox(parent, 'Warning message', 'Warning Title')
+
+# Info/alert dialog (icon=QMessageBox.Information by default)
+WidgetUtils.showAlertMsgBox(parent, 'Info message', 'Info Title')
+
+# Yes/No confirmation dialog — returns bool
+confirmed = WidgetUtils.showYesNoMsgBox(parent, 'Are you sure?', 'Confirm')
 ```
 
 ## Usage Examples

@@ -1,6 +1,7 @@
 # Contracts - Interfaces
 
 > **Interface definitions for core components**
+> **Last synced**: `2026-06-09`
 
 ## DisposableInterface
 

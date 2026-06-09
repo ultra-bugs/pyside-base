@@ -1,6 +1,7 @@
 # Config - Configuration Management
 
 > **Singleton configuration manager with JSON persistence and nested key access**
+> **Last synced**: `2026-06-09`
 
 ## Overview
 
@@ -93,7 +94,8 @@ username = config.get('database.credentials.username')
     "app": {
         "name": "Base Qt Application",
         "version": "1.0.0",
-        "debug": false
+        "debug": false,
+        "disableGui": false
     },
     "ui": {
         "theme": "auto",
@@ -102,11 +104,14 @@ username = config.get('database.credentials.username')
     },
     "logging": {
         "level": "INFO",
-        "file": "app.log"
+        "file": "app.log",
+        "moduleLvs": {"app": "DEBUG", "core": "INFO"},
+        "customLevels": []
     },
     "consolelog": {
         "enable": true,
-        "level": "DEBUG"
+        "level": "DEBUG",
+        "moduleLvs": {"app": "DEBUG", "core": "INFO"}
     }
 }
 ```

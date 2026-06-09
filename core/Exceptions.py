@@ -81,11 +81,11 @@ class ExceptionHandler:
         for exc_type, h in self._error_handlers.items():
             if isinstance(e, exc_type):
                 handler = h
-                print('using specific handler', type(h))
+                # print('using specific handler', type(h))
                 break
         if handler is None:
             handler = self._default_handler
-            print('using default handler of ExceptionHandler')
+            # print('using default handler of ExceptionHandler')
         return handler(e)
 
     def _default_handler(self, e: Exception):
@@ -93,6 +93,7 @@ class ExceptionHandler:
         from PySide6.QtCore import QThread, QTimer
         from .Logging import logger
         from .Utils import WidgetUtils
+
         # Log the exception first
         if isinstance(e, AppException):
             logger.exception('App exception')
@@ -104,10 +105,10 @@ class ExceptionHandler:
             logger.opt(exception=e).error(str(e))
             error_msg = str(e)
             error_title = 'Unhandled Error'
-        # Show messageBox only if we have a QApplication instance
+        # Show messageBox only if a GUI QApplication (not just QCoreApplication) is running
         try:
             app = QApplication.instance()
-            if app is None:
+            if not isinstance(app, QApplication):
                 return True
             # Determine parent widget
             try:
@@ -133,6 +134,7 @@ class ExceptionHandler:
     def setupGlobalHandler(cls=None):
         """Setup global exception handler"""
         import sys
+
         def globalExceptionHandler(exctype, value, traceback):
             """Global exception handler"""
             isHandled = False
@@ -140,4 +142,12 @@ class ExceptionHandler:
                 handler = cls() if cls is not None else ExceptionHandler()
                 isHandled = handler.handleException(value)
             not isHandled and sys.__excepthook__(exctype, value, traceback)
+            from PySide6.QtWidgets import QApplication
+            from .Utils import AppHelper
+            if QApplication.instance() is None and AppHelper.shouldPauseOnExit():
+                try:
+                    input('\nPress Enter to exit...')
+                except (EOFError, OSError, KeyboardInterrupt):
+                    pass
+
         sys.excepthook = globalExceptionHandler

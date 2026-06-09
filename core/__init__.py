@@ -19,7 +19,6 @@ from core.Observer import Publisher, Subscriber
 from core.QtAppContext import QtAppContext
 from core.WidgetManager import WidgetManager
 
-
 __all__ = [
     'Publisher',
     'Subscriber',

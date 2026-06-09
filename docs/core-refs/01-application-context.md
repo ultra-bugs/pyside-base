@@ -1,6 +1,7 @@
 # QtAppContext - Application Lifecycle Manager
 
 > **Central orchestrator for application context, services, and lifecycle management**
+> **Last synced**: `2026-06-09`
 
 ## Overview
 
@@ -82,12 +83,15 @@ taskManager = ctx.taskManager  # TaskManagerService | None
 **Global services:**
 
 ```python
-# Register
-myService = MyService()
-ctx.registerService('my_service', myService)
+# Register — three overloads:
+ctx.registerService(myService)                   # key = FQN of type(myService)
+ctx.registerService(MyServiceClass, myService)   # key = FQN of MyServiceClass
+ctx.registerService('my_service', myService)     # key = 'my_service' (legacy string key)
 
-# Retrieve
-myService = ctx.getService('my_service')
+# Retrieve — by string key or class:
+myService = ctx.getService('my_service')          # legacy string lookup
+myService = ctx.getService(MyServiceClass)        # lookup by class FQN
+myService = ctx.getService(MyServiceClass, None)  # returns None if not found
 ```
 
 **Scoped services:**
@@ -129,6 +133,7 @@ col = ctx.getCollection('activeTasks')
 
 # Fluent mutation
 col.add(task).add(task2)
+col.addIfAbsent(task)          # adds only if not already present; returns bool (not chainable)
 col.addMany([t1, t2, t3])
 col.remove(task)
 col.removeWhere(lambda t: t.status == 'done')
@@ -488,6 +493,54 @@ class MyTask(AbstractTask):
 - [Publisher](03-observer-pattern.md) - Event system
 - [NetworkManager](08-network-manager.md) - Network integration
 - [TaskManagerService](15-task-manager.md) - Task system
+
+## Console/Headless Mode
+
+`QtAppContext` supports running without a GUI via `QCoreApplication`.
+
+### Enabling Console Mode
+
+Two options (either one triggers console mode):
+
+```bash
+# Option 1: Environment variable
+PSA_DISABLE_GUI=true
+
+# Option 2: Config key (data/config/config.json)
+{ "app": { "disableGui": true } }
+```
+
+### What Changes in Console Mode
+
+| Aspect | GUI mode | Console mode |
+|---|---|---|
+| Qt Application | `QApplication` | `QCoreApplication` |
+| Event loop | qasync `QEventLoop` | `QCoreApplication.exec()` |
+| Theme / Icon | setup via qdarktheme | skipped |
+| Config, Publisher, TaskManager | available | available |
+| NetworkManager | available (if enabled) | available (if enabled) |
+
+### Checking Mode at Runtime
+
+```python
+ctx = QtAppContext.globalInstance()
+if ctx.consoleMode:
+    # headless — no QWidget, no theme
+    pass
+```
+
+### Console Mode Entry Point
+
+```python
+ctx = QtAppContext.globalInstance()
+ctx.bootstrap()
+
+if not ctx.consoleMode:
+    mainWindow = MainWindow()
+    mainWindow.show()
+
+sys.exit(ctx.run())
+```
 
 ## Troubleshooting
 

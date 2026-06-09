@@ -1,6 +1,7 @@
 # NetworkManager - Qt Network Integration
 
 > **QNetworkAccessManager wrapper with disk cache and feature flag integration**
+> **Last synced**: `2026-06-09`
 
 ## Overview
 

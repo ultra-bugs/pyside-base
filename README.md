@@ -68,7 +68,7 @@ Get your app skeleton ready with the right mindset:
 2. **Clone & Install**
 
    ```bash
-   git clone <your-new-repo-url> my-app
+   git clone tansautn/dat_amzir_py my-app
    cd my-app
    pixi install
    ```
@@ -101,9 +101,9 @@ project_root/
 │   ├── controllers/      # Controllers for app logic
 │   └── ...               # Other app-specific files
 ├── core/                 # ⚙️ Base Framework (Immutable Core)
-│   ├── BaseController/
-│   ├── TaskSystem/
-│   ├── WidgetManager/
+│   ├── BaseController.py
+│   ├── taskSystem/
+│   ├── WidgetManager.py
 │   └── ...               # Core modules provided by the Base
 ├── tests/                # 🧪 Application Tests
 │   └── ...               # Tests for your 'app/' directory
@@ -181,7 +181,7 @@ class MyService:
 * **WidgetManager** provides dot-notation access, suppresses signals during updates, and auto-saves configuration.
 
 ```python
-widget_manager.set('slider.value', 50, save_to_config=True)
+widget_manager.set('slider', 50, saveToConfig=True)
 ```
 
 > **Mindset**: Each component has a clear responsibility; state is managed centrally to avoid side effects.
@@ -241,10 +241,10 @@ qdarktheme.setup_theme(config.get('ui.theme'))
 ## Observer Pattern: Decoupled Communication
 
 * **Publisher**: A singleton that connects Qt signals into a unified event system.
-* **Subscriber (Handler)**: Registers `on_<event_name>` handlers—add or remove listeners without touching Controllers.
+* **Subscriber (Handler)**: Registers `on<PascalCasedEventName>` handlers—add or remove listeners without touching Controllers.
 
 ```python
-def on_button_clicked(self, data = None):
+def onButtonClicked(self, data = None):
    # Event handling logic
    pass
 ```

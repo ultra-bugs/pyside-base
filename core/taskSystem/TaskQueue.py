@@ -9,7 +9,7 @@ race conditions and re-entrancy risks.
 Submits tasks to QThreadPool for execution.
 """
 
-#                  M"""""""`M            dP
+#                  M""""""""`M            dP
 #                  Mmmmmm   .M            88
 #                  MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
 #                  MMP  .MMMMM  88    88  88888"    88'  `88
@@ -363,12 +363,22 @@ class TaskQueue(QtCore.QObject):
         except Exception as e:
             logger.opt(exception=e).error(f'Error loading TaskQueue state: {e}')
 
-    def saveState(self) -> None:
-        """Save pending tasks to storage. Only persistent tasks are saved."""
+    def saveState(self, workingSet=None) -> None:
+        """
+        Save pending tasks to storage.
+        Only persistent tasks are saved.
+        Args:
+            workingSet: Optional WorkingSet for Unit of Work pattern. If provided,
+                       uses UoW logic. Otherwise falls back to direct storage save.
+        """
         try:
             # Serialize persistent pending tasks
             persistentTasks = [task.serialize() for task in self._pendingTasks if task.isPersistent]
-            self._storage.save('pendingTasks', persistentTasks)
+            if workingSet:
+                workingSet.save('pendingTasks', persistentTasks)
+            else:
+                # Backward compatibility - direct storage save
+                self._storage.save('pendingTasks', persistentTasks)
             logger.debug(f'Saved {len(persistentTasks)} persistent pending tasks')
         except Exception as e:
             logger.error(f'Error saving TaskQueue state: {e}')

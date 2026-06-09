@@ -1,6 +1,7 @@
 # BaseController - UI Controller Architecture
 
 > **Base class for UI controllers with slot_map mechanism and auto handler discovery**
+> **Last synced**: `2026-06-09`
 
 ## Overview
 
@@ -10,6 +11,8 @@
 - **Auto handler discovery**: Automatically discovers and initializes the designated Handler class
 - **WidgetManager integration**: Dot-notation widget access
 - **Publisher integration**: Event-driven architecture
+- **Auto-unsubscribe on destroy**: When the Qt controller is destroyed, `_onDestroyed` automatically unsubscribes the handler from all its events via Publisher
+- **Stale-guard in BaseCtlHandler**: `BaseCtlHandler.update()` checks `shiboken6.isValid(controller)` before dispatching events — silently skips if the controller has been garbage-collected
 - **Metaclass validation**: Enforces `slot_map` configuration requirements at runtime
 
 ## API Reference
@@ -204,6 +207,8 @@ class MyControllerHandler(BaseCtlHandler):
         # Access controller via self.controller
         pass
 ```
+
+`BaseCtlHandler.update()` overrides `Subscriber.update()` with a stale-guard: it calls `shiboken6.isValid(self.controller)` before dispatching. If the backing Qt controller was garbage-collected (common when using `WA_DeleteOnClose`), the event is silently dropped rather than crashing.
 
 ### Example Handler
 

@@ -5,21 +5,19 @@ Tracks active tasks and maintains history of failed tasks with persistence.
 Monitors task status, progress, and logs failures for analysis.
 """
 
-#              M""""""""`M            dP
-#              Mmmmmm   .M            88
-#              MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
-#              MMP  .MMMMM  88    88  88888"    88'  `88
-#              M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
-#              M         M  `88888P'  dP   `YP  `88888P'
-#              MMMMMMMMMMM    -*-  Created by Zuko  -*-
+#                  M""""""""`M            dP
+#                  Mmmmmm   .M            88
+#                  MMMMP  .MMM  dP    dP  88  .dP   .d8888b.
+#                  MMP  .MMMMM  88    88  88888"    88'  `88
+#                  M' .MMMMMMM  88.  .88  88  `8b.  88.  .88
+#                  M         M  `88888P'  dP   `YP  `88888P'
+#                  MMMMMMMMMMM    -*-  Created by Zuko  -*-
 #
-#              * * * * * * * * * * * * * * * * * * * * *
-#              * -    - -   F.R.E.E.M.I.N.D   - -    - *
-#              * -  Copyright © 2026 (Z) Programing  - *
-#              *    -  -  All Rights Reserved  -  -    *
-#              * * * * * * * * * * * * * * * * * * * * *
-
-#
+#                  * * * * * * * * * * * * * * * * * * * * *
+#                  * -    - -   F.R.E.E.M.I.N.D   - -    - *
+#                  * -  Copyright © 2026 (Z) Programing  - *
+#                  *    -  -  All Rights Reserved  -  -    *
+#                  * * * * * * * * * * * * * * * * * * * * *
 import threading
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
@@ -274,7 +272,7 @@ class TaskTracker(QtCore.QObject):
             history_list[:] = history_list[-limit:]
 
     def _isTaskChain(self, task: Any) -> bool:
-        return task.__class__.__name__ == 'TaskChain'
+        return any(c.__name__ == 'TaskChain' for c in type(task).__mro__)
 
     def loadState(self):
         try:
@@ -287,9 +285,20 @@ class TaskTracker(QtCore.QObject):
             self._failedTaskHistory = []
             self._completedTaskHistory = []
 
-    def saveState(self):
+    def saveState(self, workingSet=None) -> None:
+        """
+        Save task history to storage.
+        Args:
+            workingSet: Optional WorkingSet for Unit of Work pattern. If provided,
+                       uses UoW logic. Otherwise falls back to direct storage saves.
+        """
         try:
-            self._storage.save('failedTaskHistory', self._failedTaskHistory)
-            self._storage.save('completedTaskHistory', self._completedTaskHistory)
+            if workingSet:
+                workingSet.save('failedTaskHistory', self._failedTaskHistory)
+                workingSet.save('completedTaskHistory', self._completedTaskHistory)
+            else:
+                # Backward compatibility - direct storage saves
+                self._storage.save('failedTaskHistory', self._failedTaskHistory)
+                self._storage.save('completedTaskHistory', self._completedTaskHistory)
         except Exception as e:
             logger.error(f'Save state failed: {e}')

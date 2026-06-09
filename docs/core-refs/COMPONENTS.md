@@ -1,4 +1,5 @@
 # Component Architecture Guide
+> **Last synced**: `2026-06-09`
 
 ## Overview
 

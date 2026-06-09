@@ -1,6 +1,7 @@
 # TaskChain - Sequential Task Execution
 
 > **Execute tasks sequentially with shared context and retry behaviors**
+> **Last synced**: `2026-06-09`
 
 ## Overview
 
@@ -10,7 +11,7 @@
 - Shared context (`ChainContext`)
 - Per-task retry behaviors
 - Error handling strategies
-- Progress aggregation
+- Progress aggregation (sub-task progress propagated with step labels)
 - **Auto-tagging**: Automatically tags children with `_ChainedChild` and `Parent_{UUID}`
 
 ## API Reference
@@ -27,7 +28,7 @@ chain = TaskChain(
     retryBehaviorMap={
         'Task1': ChainRetryBehavior.RETRY_TASK,
         'Task2': ChainRetryBehavior.SKIP_TASK,
-        'Task3': ChainRetryBehavior.FAIL_CHAIN
+        'Task3': ChainRetryBehavior.STOP_CHAIN
     }
 )
 ```
@@ -66,10 +67,13 @@ def handle(self):
 ```python
 from core.taskSystem import ChainRetryBehavior
 
-ChainRetryBehavior.RETRY_TASK   # Retry failed task
-ChainRetryBehavior.SKIP_TASK    # Skip and continue
-ChainRetryBehavior.FAIL_CHAIN   # Fail entire chain
+ChainRetryBehavior.STOP_CHAIN   # Stop the entire chain immediately (default when no entry in map)
+ChainRetryBehavior.SKIP_TASK    # Skip failed task and continue with next
+ChainRetryBehavior.RETRY_TASK   # Retry the failed task (task-level; after exhausting retries, behaves as STOP_CHAIN)
+ChainRetryBehavior.RETRY_CHAIN  # Retry entire chain from the beginning (uses chain.maxRetries)
 ```
+
+> **Default behavior**: If a task class name is not present in `retryBehaviorMap`, the chain defaults to `STOP_CHAIN`.
 
 ## Usage Examples
 
@@ -123,9 +127,9 @@ chain = taskManager.addChainTask(
         SaveTask(name='Save')
     ],
     retryBehaviorMap={
-        'Fetch': ChainRetryBehavior.RETRY_TASK,    # Retry on network error
-        'Process': ChainRetryBehavior.SKIP_TASK,   # Skip if processing fails
-        'Save': ChainRetryBehavior.FAIL_CHAIN      # Critical - fail chain
+        'FetchTask': ChainRetryBehavior.RETRY_TASK,    # Retry on network error
+        'ProcessTask': ChainRetryBehavior.SKIP_TASK,   # Skip if processing fails
+        'SaveTask': ChainRetryBehavior.STOP_CHAIN      # Critical - stop chain
     }
 )
 ```
@@ -171,19 +175,21 @@ chain = taskManager.addChainTask(
     retryBehaviorMap={
         'LoginTask': ChainRetryBehavior.RETRY_TASK,
         'ScrapeTask': ChainRetryBehavior.RETRY_TASK,
-        'ExportTask': ChainRetryBehavior.FAIL_CHAIN
+        'ExportTask': ChainRetryBehavior.STOP_CHAIN
     }
 )
 ```
 
 ## Progress Tracking
 
+Chain progress aggregates sub-task progress automatically. Each sub-task's progress contributes proportionally, and the chain emits labeled progress strings like `[1/3] FetchTask: Downloading...`.
+
 ```python
 # Chain aggregates progress from all tasks
-chain.progressUpdated.connect(lambda progress: print(f'Chain: {progress}%'))
+chain.progressUpdated.connect(lambda uuid, progress, label: print(f'Chain: {progress}% — {label}'))
 
 # Individual task progress
-task1.progressUpdated.connect(lambda progress: print(f'Task 1: {progress}%'))
+task1.progressUpdated.connect(lambda uuid, progress, label: print(f'Task 1: {progress}%'))
 ```
 
 ## Error Handling
@@ -230,7 +236,7 @@ if data is None:
 retryBehaviorMap={
     'NetworkTask': ChainRetryBehavior.RETRY_TASK,
     'OptionalTask': ChainRetryBehavior.SKIP_TASK,
-    'CriticalTask': ChainRetryBehavior.FAIL_CHAIN
+    'CriticalTask': ChainRetryBehavior.STOP_CHAIN
 }
 ```
 

@@ -58,8 +58,10 @@ class BaseController(metaclass=ControllerMeta):
         super().__init__(parent)
         # Auto-enable delete-on-close for QDialog subclasses so destroyed signal fires
         from PySide6.QtWidgets import QDialog
+
         if isinstance(self, QDialog):
             from PySide6.QtCore import Qt
+
             self.setAttribute(Qt.WA_DeleteOnClose)
         ctx = QtAppContext.globalInstance()
         self.widgetManager = WidgetManager(self)
@@ -123,6 +125,7 @@ class BaseController(metaclass=ControllerMeta):
                 except AttributeError:
                     wd = self.widgetManager.get(t[0])
                     from .Logging import logger
+
                     logger.debug('widget "%s" does not have attribute "%s". Abort connecting event: %s' % (wd, t[1], event))
                     pass
                 self.publisher.subscribe(subscriber=subscriber, event=event)
@@ -142,6 +145,7 @@ class BaseCtlHandler(Subscriber):
         """
         try:
             from shiboken6 import isValid
+
             if not isValid(self.controller):
                 logger.debug(f'{self.__class__.__name__}: controller destroyed, skipping event "{event}"')
                 return

@@ -1,6 +1,7 @@
 # Observer Pattern - Publisher/Subscriber Event System
 
 > **Queue-based, thread-aware, non-blocking event dispatch**
+> **Last synced**: `2026-05-26`
 
 ## Overview
 
@@ -8,9 +9,9 @@ The Observer pattern uses a Publisher/Subscriber model to:
 
 - Decouple components (avoiding hard dependencies)
 - Enable event-driven communication
-- Provide **non-blocking** `notify()` via a background dispatcher thread
+- Provide **non-blocking** `notify()` / `notifyAsync()` via a background dispatcher thread
 - Guarantee **UI thread safety** for main-thread subscribers via `_MainThreadBridge`
-- Support **async I/O handlers** via TaskSystem integration (`pubsubFireAndForget`)
+- Support **async I/O handlers** via a dedicated `ThreadPoolExecutor` (`notifyAsync()` — sender-side opt-in)
 - Use smart parameter injection (type-hint aware matching)
 
 ## Architecture
@@ -18,10 +19,11 @@ The Observer pattern uses a Publisher/Subscriber model to:
 ```mermaid
 flowchart TD
     A["Any Thread\n(UI / Worker)"] -->|"notify(event) — non-blocking"| Q["Dispatcher Queue\n(FIFO)"]
+    A -->|"notifyAsync(event) — non-blocking"| Q
     Q --> D["PubSubDispatcher\n(DaemonWorker thread)"]
     D -->|homeThread == main| B["_MainThreadBridge\nQt QueuedConnection\n→ safe UI update ✅"]
-    D -->|child thread, default| I["inline on Dispatcher"]
-    D -->|"pubsubFireAndForget=True"| T["_CallableTask\n→ TaskManagerService\n→ QThreadPool"]
+    D -->|"child thread, msg.isAsync=False"| I["inline on Dispatcher"]
+    D -->|"msg.isAsync=True"| T["_pubsubExecutor\nThreadPoolExecutor(max_workers=2)"]
 ```
 
 ### Key Components
@@ -31,8 +33,8 @@ flowchart TD
 | `Publisher` (singleton) | Manages subscribers, queues events, routes delivery |
 | `_PubSubDispatcher` | `DaemonWorker` thread draining the event queue |
 | `_MainThreadBridge` | `QObject` relaying events to Qt main thread via `QueuedConnection` |
-| `_CallableTask` | Wraps a callable as `AbstractTask` for TaskSystem delivery |
-| `Subscriber` | Base observer; auto-subscribes; smart parameter injection |
+| `UpdatableMixin` | Provides `update()` with smart parameter injection; base for `Subscriber` |
+| `Subscriber` | Base observer extending `UpdatableMixin`; auto-subscribes at construction |
 
 ## API Reference
 
@@ -43,11 +45,12 @@ from core import Publisher
 
 pub = Publisher.instance()   # or Publisher.globalInstance()
 
-pub.notify('event.name', arg1, key=value)   # non-blocking ✅
-pub.subscribe(sub, event='my.event')         # or event=None for global
-pub.unsubscribe(sub, event='my.event')       # or event=None for all
-pub.connect(widget, 'clicked', 'ui.click')  # Qt signal → event
-pub.stop()                                   # graceful dispatcher shutdown
+pub.notify('event.name', arg1, key=value)       # non-blocking, sync delivery on Dispatcher ✅
+pub.notifyAsync('event.name', arg1, key=value)  # non-blocking, async delivery via ThreadPoolExecutor ✅
+pub.subscribe(sub, event='my.event')             # or event=None for global
+pub.unsubscribe(sub, event='my.event')           # or event=None for all
+pub.connect(widget, 'clicked', 'ui.click')      # Qt signal → event
+pub.stop()                                       # graceful dispatcher shutdown + executor shutdown
 ```
 
 ### Subscriber
@@ -72,20 +75,27 @@ class MyHandler(Subscriber):
 
 ## Thread Routing
 
-Subscribers capture `_homeThread` at construction time:
+Subscribers capture `_homeThread` at construction time. Delivery mode is determined by the **sender**:
 
-| Subscriber registered on | Delivery mechanism |
-|---|---|
-| Main thread | `_MainThreadBridge` → Qt `QueuedConnection` (UI-safe) |
-| Child thread (default) | Inline on Dispatcher thread |
-| Child thread + `pubsubFireAndForget=True` | `TaskManagerService.addTask()` → QThreadPool |
+| Subscriber registered on | Sender uses | Delivery mechanism |
+|---|---|---|
+| Main thread | `notify()` or `notifyAsync()` | `_MainThreadBridge` → Qt `QueuedConnection` (UI-safe) |
+| Child thread | `notify()` | Inline on Dispatcher thread |
+| Child thread | `notifyAsync()` | `_pubsubExecutor` → `ThreadPoolExecutor(max_workers=2)` |
 
-### opt-in fire-and-forget
+### Sender-side fire-and-forget
+
+Async delivery is a **sender** decision, not a subscriber class attribute:
 
 ```python
-class VndAutomationService(HandlerServiceWithAck):
-    pubsubFireAndForget = True   # I/O-heavy: route via TaskSystem
+# Blocks Dispatcher thread while handler runs
+publisher.notify('task.started', taskId=uuid)
+
+# Offloads delivery to a dedicated ThreadPoolExecutor — Dispatcher returns immediately
+publisher.notifyAsync('api.sync', vendorId=42)
 ```
+
+Use `notifyAsync()` when the handler performs I/O (API calls, DB writes, etc.).
 
 ## Smart Parameter Injection
 
@@ -105,7 +115,7 @@ publisher.notify('complex.event', userId=123, username='john')
 ```python
 # In QtAppContext._onExit():
 publisher.notify('app.shutdown')
-publisher.stop()   # gracefully drains and stops dispatcher thread
+publisher.stop()   # gracefully drains and stops dispatcher thread + shuts down ThreadPoolExecutor
 ```
 
 ## Usage Examples
@@ -148,10 +158,11 @@ class MyTask(AbstractTask):
 
 | Operation | Thread-safe? |
 |---|---|
-| `notify()` | ✅ — enqueue only, no lock needed |
+| `notify()` / `notifyAsync()` | ✅ — enqueue only, no lock needed |
 | `subscribe()` / `unsubscribe()` | ✅ QMutex |
 | Main-thread handler execution | ✅ via `_MainThreadBridge` + `QueuedConnection` |
 | Child-thread handler (inline) | ✅ runs on Dispatcher thread, no Qt objects |
+| Async handler execution | ✅ `ThreadPoolExecutor` — isolated from Qt objects |
 
 ## Best Practices
 
@@ -169,9 +180,8 @@ class MyHandler(Subscriber):
     def __init__(self):
         super().__init__(events=['user.login'])
 
-# I/O-heavy service opts-in
-class ApiSyncService(Subscriber):
-    pubsubFireAndForget = True
+# For I/O-heavy events, use notifyAsync() at the call site
+publisher.notifyAsync('api.sync', vendorId=42)  # offloads to ThreadPoolExecutor
 ```
 
 ### ❌ DON'T
@@ -185,9 +195,17 @@ class A(Subscriber):
     def onEventA(self):
         publisher.notify('event.b')  # OK if B doesn't emit event.a
 
-# Don't bypass Publisher with raw QThreadPool for I/O tasks
-# Use pubsubFireAndForget = True instead
+# Don't set pubsubFireAndForget = True on subscribers — that attribute no longer exists.
+# Fire-and-forget is a sender concern: use publisher.notifyAsync() instead.
 ```
+
+## TaskChain Subscription Lifecycle
+
+`TaskChain` auto-subscribes to `'ChainProgressUpdateRequest'` at construction. Unsubscribe is guaranteed via `_done()` — called in `AbstractTask.run()` finally block on **all** exit paths (complete, fail, exception).
+
+For the cancelled-before-run case (task still PENDING when `cancel()` is called), `_performCancellationCleanup()` handles unsubscribe since `run()` and `_done()` are never invoked.
+
+> **Subclass rule**: If a `TaskChain` subclass overrides `_done()`, it **must** call `super()._done()` to preserve cleanup guarantees.
 
 ## Testing
 
@@ -201,10 +219,10 @@ Tests verify:
 - Child-thread subscribers receive events off main thread
 - FIFO ordering guaranteed
 - `unsubscribe()` stops delivery
-- `fireAndForget` fallback when TaskManager unavailable
+- `notifyAsync()` offloads to ThreadPoolExecutor
 
 ## Related
 
 - [BaseController](04-controller-architecture.md) — auto-unsubscribes handler on destroy
 - [QtAppContext](01-application-context.md) — publisher access, shutdown
-- [Task System](12-task-system-overview.md) — `fireAndForget` concurrency
+- [Task System](12-task-system-overview.md) — background task execution

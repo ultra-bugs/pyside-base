@@ -1,6 +1,7 @@
 # Exception Handling
 
 > **Custom exception types and global exception handler**
+> **Last synced**: `2026-06-09`
 
 ## Overview
 

@@ -27,6 +27,7 @@ def autoStrip(cls):
     if not is_dataclass(cls):
         raise TypeError('@auto_strip is only applicable to dataclass')
     originalPostInit = getattr(cls, '__post_init__', None)
+
     @wraps(originalPostInit)
     def newPostInit(self, *args, **kwargs):
         if originalPostInit:
@@ -36,6 +37,7 @@ def autoStrip(cls):
                 value = getattr(self, f.name)
                 if isinstance(value, str):
                     setattr(self, f.name, value.strip())
+
     setattr(cls, '__post_init__', newPostInit)
     return cls
 
@@ -60,11 +62,13 @@ class SignalBlocker(QtCore.QObject):
 def singleton(cls):
     """Singleton decorator"""
     instances = {}
+
     @wraps(cls)
     def getInstance(*args, **kwargs):
         if cls not in instances:
             instances[cls] = cls(*args, **kwargs)
         return instances[cls]
+
     return getInstance
 
 
@@ -77,8 +81,10 @@ def catchExceptInMsgBox(
         func (callable): The function which should be called
         reRaise (bool, optional): If True, the exception will be re-raised after being logged. Defaults to True.
     """
+
     def showExceptInMsgBox(*args, **kwargs):
         from core.Logging import logger as log
+
         try:
             return func(*args, **kwargs)
         except Exception as exception:
@@ -88,6 +94,7 @@ def catchExceptInMsgBox(
                 if err is None:
                     err = f'Runtime error in {func.__name__}: {exception}'
                 from core import WidgetUtils
+
                 msg = WidgetUtils.showErrorMsgBox(None, errorMsg, createOnly=True)
                 msg.setInformativeText(f'{type(exception).__name__}: {exception}')
                 trace_msg = f'Traceback:\n{traceback.format_exc()}'
@@ -97,6 +104,7 @@ def catchExceptInMsgBox(
                 msg.exec()
             if reRaise:
                 raise
+
     return showExceptInMsgBox
 
 
@@ -112,8 +120,10 @@ def cachedWithTtl(ttlMs: int) -> Callable[[Callable[P, R]], Callable[P, R]]:
         def expensive_function(x):
             return x * 2
     """
+
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
         cache: dict[tuple, tuple[float, Any]] = {}
+
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             # Create cache key from arguments
@@ -128,8 +138,10 @@ def cachedWithTtl(ttlMs: int) -> Callable[[Callable[P, R]], Callable[P, R]]:
             result = func(*args, **kwargs)
             cache[key] = (current_time, result)
             return result
+
         # Add cache inspection methods
         wrapper.cache_info = lambda: {'size': len(cache), 'ttlMs': ttlMs}
         wrapper.cache_clear = lambda: cache.clear()
         return wrapper
+
     return decorator

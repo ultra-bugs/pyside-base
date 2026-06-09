@@ -18,8 +18,6 @@ Provides serialization support for persistence across application restarts.
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-
-#
 import json
 import threading
 from typing import Any, Dict, Optional
@@ -71,40 +69,14 @@ class ChainContext:
     def set(self, key: str, value: Any) -> None:
         """
         Set a value in the context.
-        The value must be JSON serializable to support persistence.
         Args:
             key: Key to set
-            value: Value to store (must be JSON serializable)
-        Raises:
-            TypeError: If value is not JSON serializable
+            value: Value to store
         """
-        # Validate JSON serializability
-        try:
-            test = json.dumps(value)
-        except (TypeError, ValueError) as e:
-            try:
-                shouldDump = True
-                _org = value
-                if hasattr(value, 'toJSON'):
-                    test = value.toJSON()
-                    shouldDump = False
-                if hasattr(value, 'toDict') and callable(value.toDict):
-                    test = value.toDict()
-                    shouldDump = False
-                if hasattr(value, 'to_dict') and callable(value.to_dict):
-                    test = value.to_dict()
-                    shouldDump = False
-                if hasattr(value, 'serialize') and callable(value.serialize):
-                    test = value.serialize()
-                    shouldDump = False
-                if shouldDump:
-                    test = json.dumps(value)
-            except (TypeError, ValueError) as te:
-                raise TypeError(f"Value for key '{key}' is not JSON serializable: {e}")
         with self._lock:
             self._data[key] = value
             logger.debug(f"ChainContext[{self._chainUuid}] set key '{key}'")
-    
+
     def serialize(self) -> Dict[str, Any]:
         """
         Serialize context to dictionary for persistence.
@@ -131,7 +103,11 @@ class ChainContext:
             elif hasattr(value, 'serialize') and callable(value.serialize):
                 result[key] = value.serialize()
             else:
-                result[key] = value
+                try:
+                    json.dumps(value)
+                    result[key] = value
+                except (TypeError, ValueError):
+                    logger.warning(f"ChainContext serialize: key '{key}' skipped (not JSON serializable)")
         return result
 
     @classmethod

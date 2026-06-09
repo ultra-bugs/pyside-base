@@ -12,7 +12,7 @@
 #                  *    -  -  All Rights Reserved  -  -    *
 #                  * * * * * * * * * * * * * * * * * * * * *
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from PySide6.QtCore import QMutex, QMutexLocker
 
@@ -82,14 +82,48 @@ class Config:
                 logger.error(f'Failed to save configuration: {e}')
                 raise ConfigError(f'Failed to save configuration: {e}')
 
+    def _traverse(self, config: Dict[str, Any], keys: List[str], create_missing: bool = False) -> Tuple[Dict[str, Any], str]:
+        """Traverse configuration to find parent dict and key, supporting dotted keys"""
+        current = config
+        i = 0
+        while i < len(keys):
+            if not isinstance(current, dict):
+                raise TypeError(f"Expected dict, got {type(current).__name__}")
+            
+            remainder_key = '.'.join(keys[i:])
+            if remainder_key in current:
+                return current, remainder_key
+            
+            if i == len(keys) - 1:
+                return current, keys[i]
+            
+            matched = False
+            for length in range(len(keys) - i - 1, 0, -1):
+                part = '.'.join(keys[i : i + length])
+                if part in current:
+                    current = current[part]
+                    i += length
+                    matched = True
+                    break
+            
+            if not matched:
+                k = keys[i]
+                if k not in current:
+                    if create_missing:
+                        current[k] = {}
+                    else:
+                        raise KeyError(k)
+                current = current[k]
+                i += 1
+        
+        return current, keys[-1]
+
     def get(self, key: str, default: Any = None) -> Any:
         """Get a configuration value"""
         with QMutexLocker(self._lock):
             try:
-                value = self._config
-                for k in key.split('.'):
-                    value = value[k]
-                return value
+                parent, k = self._traverse(self._config, key.split('.'))
+                return parent[k]
             except (KeyError, TypeError):
                 return default
 
@@ -103,19 +137,22 @@ class Config:
                     config['raffleHistories']: List[str] = config['raffleHistory'] if hasattr(config, 'raffleHistories') else []
                     if not value not in config['raffleHistories']:
                         config['raffleHistories'].append(value)
-            for k in keys[:-1]:
-                if k not in config:
-                    config[k] = {}
-                config = config[k]
-            config[keys[-1]] = value
+            
+            parent, k = self._traverse(self._config, keys, create_missing=True)
+            parent[k] = value
 
     def _create_default_config(self) -> None:
         """Create default configuration"""
         defaultConfig = {
-            'app': {'name': 'Base Qt Application', 'version': '1.0.0', 'debug': False},
+            'app': {'name': 'Base Qt Application', 'version': '1.0.0', 'debug': False, 'disableGui': False},
             'ui': {'theme': 'auto', 'language': 'en', 'high_dpi': True},
-            'logging': {'level': 'INFO', 'file': 'app.log', 'module_levels': {'app': 'DEBUG', 'core': 'INFO'}},
-            'consolelog': {'enable': True, 'level': 'DEBUG', 'module_levels': {'app': 'DEBUG', 'core': 'INFO'}},
+            'logging': {
+                'level': 'INFO',
+                'file': 'app.log',
+                'moduleLvs': {'app': 'DEBUG', 'core': 'INFO'},
+                'customLevels': []
+            },
+            'consolelog': {'enable': True, 'level': 'DEBUG', 'moduleLvs': {'app': 'DEBUG', 'core': 'INFO'}},
         }
         locker = QMutexLocker(self._lock)
         self._config = defaultConfig

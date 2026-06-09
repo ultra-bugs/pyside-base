@@ -1234,7 +1234,47 @@ class URIComponent(Enum):
     PASSWORD = auto()
 
 
+class LaunchMode(Enum):
+    TERMINAL = auto()        # ran from interactive shell, stdin is tty
+    DOUBLE_CLICKED = auto()  # launched from file manager — console dies on exit
+    SUBPROCESS = auto()      # pixi run, CI, pipe — no interactive stdin
+    IDE = auto()             # PyCharm / VS Code run config
+
+
 class AppHelper:
+    _launchMode: 'LaunchMode | None' = None
+
+    @classmethod
+    def detectLaunchMode(cls) -> LaunchMode:
+        if cls._launchMode is None:
+            cls._launchMode = cls._detectLaunchMode()
+        return cls._launchMode
+
+    @classmethod
+    def _detectLaunchMode(cls) -> LaunchMode:
+        if os.environ.get('PYCHARM_HOSTED') or os.environ.get('VSCODE_PID'):
+            return LaunchMode.IDE
+        if sys.platform == 'win32' and cls._isWinDoubleClicked():
+            return LaunchMode.DOUBLE_CLICKED
+        if sys.stdin is not None and sys.stdin.isatty():
+            return LaunchMode.TERMINAL
+        return LaunchMode.SUBPROCESS
+
+    @staticmethod
+    def _isWinDoubleClicked() -> bool:
+        # GetConsoleProcessList == 1 → sole console owner → launched by file manager
+        try:
+            import ctypes
+            buf = (ctypes.c_ulong * 2)()
+            return ctypes.windll.kernel32.GetConsoleProcessList(buf, 2) == 1
+        except Exception:
+            return False
+
+    @classmethod
+    def shouldPauseOnExit(cls) -> bool:
+        """True when the console will close immediately on process exit without a pause."""
+        return cls.detectLaunchMode() in (LaunchMode.DOUBLE_CLICKED, LaunchMode.TERMINAL)
+
     @staticmethod
     def getConfig() -> 'core.Config':
         from core.Config import Config

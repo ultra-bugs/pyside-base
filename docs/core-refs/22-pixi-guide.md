@@ -12,6 +12,7 @@ Pixi is a high-performance package and environment management tool. In this proj
 You need to install Pixi before starting: [Installation Guide](https://pixi.sh/latest/#installation) | [Official Documentation](https://pixi.sh/latest/)
 
 > **Important Note**: This project uses a `skeleton` structure managed by `pixi`. You must use `pixi` for **EVERY COMMAND** you enter into the console.
+> **Last synced**: `2026-06-09`
 
 ## 2. Pixi vs Pip/Venv
 

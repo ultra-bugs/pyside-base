@@ -18,11 +18,10 @@ Provides the primary API for other parts of the application to interact with tas
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-
-#
 from typing import Any, Dict, List, Optional, Union
 
 from PySide6 import QtCore
+from qasync import QThreadExecutor
 
 from .ScheduleInfo import ScheduleInfo, ScheduleInfoFactory
 from ..Config import Config
@@ -108,6 +107,8 @@ class TaskManagerService(QtCore.QObject, UpdatableMixin):
         self._taskTracker = TaskTracker(self._storage)
         self._taskQueue = TaskQueue(self._taskTracker, self._storage, config)
         self._taskScheduler = TaskScheduler(self._taskQueue, self._storage)
+        self._autoSaveTimer = QtCore.QTimer(self)
+        self._autoSaveTimer.timeout.connect(self.saveState)
         self._connectSubsystemSignals()
         self._applyConfig()
         logger.info('TaskManagerService initialized successfully')
@@ -187,6 +188,10 @@ class TaskManagerService(QtCore.QObject, UpdatableMixin):
         """Apply configuration settings to subsystems."""
         maxConcurrent = self._config.get('taskSystem.maxConcurrentTasks', 3)
         self.setMaxConcurrentTasks(maxConcurrent)
+        intervalSecs = self._config.get('taskSystem.autoSaveIntervalSecs', 30)
+        if intervalSecs and intervalSecs > 0:
+            self._autoSaveTimer.start(int(intervalSecs * 1000))
+            logger.info(f'Auto-save timer started: every {intervalSecs}s')
 
     def addTask(self, task: Any, scheduleInfo: Optional[Union[ScheduleInfo, Dict[str, Any]]] = None) -> None:
         """
@@ -441,7 +446,9 @@ class TaskManagerService(QtCore.QObject, UpdatableMixin):
             return
         logger.info(f'Setting max concurrent tasks to: {count}')
         self._taskQueue.setMaxConcurrentTasks(count)
-
+    def getMaxConcurrentTasks(self) -> int:
+        from PySide6 import QtCore
+        return QtCore.QThreadPool.globalInstance().maxThreadCount()
     def getQueueStatus(self) -> Dict[str, Any]:
         """
         Get current queue status.
@@ -476,9 +483,17 @@ class TaskManagerService(QtCore.QObject, UpdatableMixin):
         """
         logger.info('Saving TaskManagerService state...')
         try:
-            self._taskQueue.saveState()
-            self._taskTracker.saveState()
-            logger.info('TaskManagerService state saved successfully')
+            # Create WorkingSet for orchestrated save
+            workingSet = self._storage.beginWork()
+            # Pass WorkingSet to all subsystems
+            self._taskQueue.saveState(workingSet)
+            self._taskTracker.saveState(workingSet)
+            # Commit all changes atomically
+            written = workingSet.commit()
+            if written:
+                logger.info(f'TaskManagerService state saved successfully ({written} keys)')
+            else:
+                logger.debug('TaskManagerService state unchanged, no write performed')
         except Exception as e:
             logger.error(f'Error saving TaskManagerService state: {e}')
 
@@ -487,6 +502,7 @@ class TaskManagerService(QtCore.QObject, UpdatableMixin):
         Shutdown the TaskManagerService gracefully.
         """
         logger.info('Shutting down TaskManagerService...')
+        self._autoSaveTimer.stop()
         self.saveState()
         self._taskQueue.stop()
         self._taskScheduler.shutdown(wait=True)

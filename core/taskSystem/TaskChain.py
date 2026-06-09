@@ -18,18 +18,13 @@ Supports retry behaviors, progress tracking, and persistence.
 #              * -  Copyright © 2026 (Z) Programing  - *
 #              *    -  -  All Rights Reserved  -  -    *
 #              * * * * * * * * * * * * * * * * * * * * *
-
-#
 import importlib
 import time
-import uuid
-from logging import exception
 from typing import Any, Dict, List, Optional
 
 from core.Logging import logger
 from core.Observer import Publisher, Subscriber
-from core.taskSystem.AbstractTask import AbstractTask
-from core.taskSystem.Exceptions import TaskFailedException
+from core.taskSystem.AbstractTask import AbstractTask, TaskFailedException
 from core.taskSystem.ChainContext import ChainContext
 from core.taskSystem.ChainRetryBehavior import ChainRetryBehavior
 from core.taskSystem.TaskStatus import TaskStatus
@@ -110,14 +105,19 @@ class TaskChain(AbstractTask, Subscriber):
         progress = int((self._currentTaskIndex + 1) / len(self._tasks) * 100)
         self.setProgress(progress)
 
+    def _done(self):
+        try:
+            Publisher().unsubscribe(self, event='ChainProgressUpdateRequest')
+        except Exception:
+            pass
+        return super()._done()
+
     def cancel(self) -> None:
         """
         Cancel the chain and all child tasks.
         Overrides AbstractTask.cancel() to ensure proper cleanup.
         """
         logger.info(f'Cancelling TaskChain {self.uuid} - {self.name}')
-        publisher = Publisher()
-        publisher.unsubscribe(self, event='ChainProgressUpdateRequest')
         self._performCancellationCleanup()
         super().cancel()
 
@@ -141,10 +141,14 @@ class TaskChain(AbstractTask, Subscriber):
                 logger.info(f'TaskChain {self.uuid} was cancelled')
                 return
             self._progress_updated_externally = False
+            rs = {}
             task = self._tasks[self._currentTaskIndex]
             task.setChainContext(self._chainContext)
             logger.info(f'TaskChain {self.uuid} executing task {self._currentTaskIndex + 1}/{len(self._tasks)}: {task.name}')
             isTaskSuccess = self._executeSubTaskWithRetry(task)
+            if hasattr(task, 'result') and isinstance(task.result, dict):
+                rs.update(task.result)
+            self._chainContext.set('result', rs)
             if self.isStopped() or task.status == TaskStatus.CANCELLED:
                 if self.status != TaskStatus.FAILED:
                     self.setStatus(TaskStatus.CANCELLED)
@@ -178,20 +182,19 @@ class TaskChain(AbstractTask, Subscriber):
             self._currentTaskIndex += 1
         self.result = self._chainContext.serialize()['data']
         logger.info(f'TaskChain {self.uuid} - {self.name} completed successfully')
-        publisher = Publisher()
-        publisher.unsubscribe(self, event='ChainProgressUpdateRequest')
 
-    def _onSubTaskProgress(self, subUuid: str, subPct: int, subLabel: str) -> None:
+    def _onSubTaskProgress(self, subUuid: str, subPct: int, subLabel: str, taskIndex: int) -> None:
         """Handle progress update from currently executing sub-task.
         Calculates chain-aware progress:
             chainPct = (stepIdx * 100 + subPct) / totalSteps
+        taskIndex is captured at connect-time, not read from self._currentTaskIndex,
+        to avoid stale reads when Qt delivers a queued signal after the index advances.
         """
         n = len(self._tasks)
         if n == 0:
             return
-        chainPct = int((self._currentTaskIndex * 100 + subPct) / n)
-        task = self._tasks[self._currentTaskIndex]
-        label = f'[{self._currentTaskIndex + 1}/{n}] {task.name}'
+        chainPct = int((taskIndex * 100 + subPct) / n)
+        label = f'[{taskIndex + 1}/{n}] {self._tasks[taskIndex].name}'
         if subLabel:
             label = f'{label}: {subLabel}'
         self.setProgress(chainPct, label)
@@ -206,10 +209,15 @@ class TaskChain(AbstractTask, Subscriber):
         Returns:
             True if task succeeded, False if failed after all retries
         """
+        taskIndex = self._currentTaskIndex
+
+        def onProgress(subUuid: str, subPct: int, subLabel: str) -> None:
+            self._onSubTaskProgress(subUuid, subPct, subLabel, taskIndex)
+
         attempts = 0
         maxAttempts = task.maxRetries + 1
         # Connect sub-task progress signal → chain-aware aggregation
-        task.signals.progressUpdated.connect(self._onSubTaskProgress)
+        task.signals.progressUpdated.connect(onProgress)
         try:
             while attempts < maxAttempts:
                 if self.isStopped():
@@ -243,7 +251,7 @@ class TaskChain(AbstractTask, Subscriber):
             return False
         finally:
             try:
-                task.signals.progressUpdated.disconnect(self._onSubTaskProgress)
+                task.signals.progressUpdated.disconnect(onProgress)
             except Exception:
                 pass
 

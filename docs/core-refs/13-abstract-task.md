@@ -1,14 +1,15 @@
 # AbstractTask - Base Task Class
 
 > **Base class for background tasks with lifecycle management, signals, and serialization**
+> **Last synced**: `2026-06-09`
 
 ## Overview
 
 `AbstractTask` is the abstract base class for all background tasks. It provides:
 
 - QRunnable integration (via QThreadPool)
-- Qt signals (`statusChanged`, `progressUpdated`, `taskFinished`)
-- Lifecycle management (PENDING → RUNNING → COMPLETED/FAILED/CANCELLED/PAUSED)
+- Qt signals (`statusChanged`, `progressUpdated`, `taskFinished`) via composed `TaskSignals` object
+- Lifecycle management (PENDING → RUNNING → COMPLETED/FAILED/CANCELLED/PAUSED/RETRYING)
 - Serialization and deserialization
 - Retry mechanism
 - Cancellation support
@@ -29,15 +30,16 @@ class MyTask(AbstractTask):
             isPersistent=False,
             maxRetries=0,
             retryDelaySeconds=5,
-            failSilently=False,
-            retryDelaySeconds=5,
-            failSilently=False,
+            failSilently=True,
             chainUuid=None,
             tags=None,
             uniqueType=UniqueType.NONE
         )
-        )
 ```
+
+> **Note**: `failSilently` defaults to `True` — exceptions inside `handle()` are caught and logged without re-raising. Set to `False` to propagate exceptions to the thread pool.
+
+> **Auto-tagging**: The constructor automatically adds `self.__class__.__name__` as a tag on every task.
 
 ### Abstract Methods
 
@@ -52,10 +54,7 @@ def _performCancellationCleanup(self):
 
 @classmethod
 def deserialize(cls, data: dict):
-    """Deserialize from dict - must implement if isPersistent=True"""
-    pass
-def deserialize(cls, data: dict):
-    """Deserialize from dict - must implement if isPersistent=True"""
+    """Deserialize from dict - must be implemented in every subclass"""
     pass
 ```
 
@@ -75,12 +74,26 @@ Tasks use a thread-safe `TaskState` object to wrap the native `TaskStatus` enum.
 ```python
 # Propagate UI updates and trigger events via task instance wrappers
 self.setStatus(TaskStatus.RUNNING)
-self.setProgress(50)  # 0-100
+self.setProgress(50)           # 0-100
+self.setProgress(50, 'Step 3') # optional label
 
 # Accessing properties directly
 current_status = self.status  # Proxy for self.taskState.current
 if self.taskState.isPaused():
-    self.taskState.waitIfPaused()  # Block executing thread inherently until resumed
+    self.taskState.waitIfPaused()  # Block executing thread until resumed
+```
+
+### Pause / Resume
+
+Inside `handle()`, call `checkPaused()` periodically to honour pause requests:
+
+```python
+def handle(self):
+    for item in items:
+        self.checkPaused()   # blocks here if paused, wakes on resume or cancel
+        if self.isStopped():
+            return
+        process(item)
 ```
 
 ### Cancellation
@@ -91,6 +104,7 @@ if self.isStopped():
 
 self.cancel()  # Request cancellation cooperatively
 self.fail('Reason')  # Mark manually as failed
+self.fail('Reason', exception=original_exc)  # Chain an existing exception
 ```
 
 ### Serialization
@@ -149,14 +163,17 @@ TaskStatus.COMPLETED   # Finished successfully
 TaskStatus.FAILED      # Failed alongside raising an error
 TaskStatus.CANCELLED   # Cancelled externally by user workflow
 TaskStatus.PAUSED      # Execution suspended temporarily over the pause barrier
+TaskStatus.RETRYING    # Waiting before a retry attempt
 ```
 
 ## Signals
 
+Signals are held on `task.signals` (a `TaskSignals` QObject) and exposed as proxy properties for backward compatibility.
+
 ```python
-task.statusChanged.connect(lambda status: print(f'Status: {status}'))
-task.progressUpdated.connect(lambda progress: print(f'Progress: {progress}%'))
-task.taskFinished.connect(lambda: print('Task finished'))
+task.statusChanged.connect(lambda uuid, status: print(f'Status: {status}'))
+task.progressUpdated.connect(lambda uuid, progress, label: print(f'Progress: {progress}%'))
+task.taskFinished.connect(lambda uuid, task, result, err: print('Task finished'))
 ```
 
 ## Usage Examples
@@ -192,6 +209,10 @@ class DownloadTask(AbstractTask):
         # Remove partial file segments
         if os.path.exists(self.savePath):
             os.remove(self.savePath)
+    
+    @classmethod
+    def deserialize(cls, data: dict):
+        return cls(url=data['url'], savePath=data['savePath'])
 ```
 
 ### With Scoped Resources
@@ -218,6 +239,7 @@ class BrowserTask(AbstractTask):
             for i in range(10):
                 if self.isStopped():
                     return
+                self.checkPaused()
                 # Process...
                 self.setProgress(i * 10)
         
@@ -227,6 +249,10 @@ class BrowserTask(AbstractTask):
     def _performCancellationCleanup(self):
         # Browser cleanup inherently handled safely through releaseScope
         pass
+    
+    @classmethod
+    def deserialize(cls, data: dict):
+        return cls(url=data['url'])
 ```
 
 ### Persistent Task
@@ -282,6 +308,10 @@ class ApiTask(AbstractTask):
     
     def _performCancellationCleanup(self):
         pass
+    
+    @classmethod
+    def deserialize(cls, data: dict):
+        return cls(endpoint=data['endpoint'])
 ```
 
 ## Lifecycle
@@ -301,11 +331,11 @@ taskManager.addTask(task)
 
 # 4. Completion hooks
 # Success => Status: COMPLETED
-# Error => Status: FAILED
+# Error => Status: FAILED (may transition to RETRYING if retries remain)
 # Cancelled => Status: CANCELLED
 
 # 5. Finished and cleaned up
-# Emits: taskFinished signal internally
+# Emits: taskFinished(uuid, task, result, err)
 ```
 
 ## Best Practices
@@ -319,6 +349,12 @@ def handle(self):
         if self.isStopped():
             return
         # Carry across pipeline...
+
+# Call checkPaused() to honour pause requests
+def handle(self):
+    for item in items:
+        self.checkPaused()
+        process(item)
 
 # Update progress
 def handle(self):

@@ -1,4 +1,5 @@
 # Testing Guide
+> **Last synced**: `2026-06-09`
 
 > [!IMPORTANT]
 > This skeleton project used `pixi` for manage dependencies, run CLI tasks. You'll need `pixi` for every LINEs you entering to COMMAND console. So, usage of `pixi` here [22-pixi-guide.md](22-pixi-guide.md)

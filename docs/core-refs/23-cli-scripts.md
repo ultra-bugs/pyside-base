@@ -45,6 +45,7 @@ pixi run uic
 ```
 
 > **Note**: This script should be run every time you modify the interface in Qt Designer. The `pixi run dev` command automatically runs this script before starting the app.
+> **Last synced**: `2026-06-09`
 
 ## 3. App Info Configuration (`set_app_info.py`)
 
