@@ -496,7 +496,7 @@ class AbstractTask(QtCore.QRunnable, abc.ABC, metaclass=QRunnableABCMeta):
         except Exception as e:
             self.error = f'{e.__class__.__name__}: {e}'
             self.setStatus(TaskStatus.FAILED)
-            logger.opt(exception=e).error(f'Task {self.uuid} failed with error: {e}', exc_info=True)
+            logger.opt(exception=e).error(f'Task {self.uuid} failed with error: {e}')
             self.errorException = e
             if not self.failSilently:
                 raise

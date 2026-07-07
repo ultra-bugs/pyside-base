@@ -131,13 +131,6 @@ class Config:
         """Set a configuration value"""
         with QMutexLocker(self._lock):
             keys = key.split('.')
-            config = self._config
-            if key == 'raffle_id':
-                if config['raffle_id']:
-                    config['raffleHistories']: List[str] = config['raffleHistory'] if hasattr(config, 'raffleHistories') else []
-                    if not value not in config['raffleHistories']:
-                        config['raffleHistories'].append(value)
-            
             parent, k = self._traverse(self._config, keys, create_missing=True)
             parent[k] = value
 
