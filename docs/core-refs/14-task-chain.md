@@ -1,7 +1,7 @@
 # TaskChain - Sequential Task Execution
 
 > **Execute tasks sequentially with shared context and retry behaviors**
-> **Last synced**: `2026-06-09`
+> **Last synced**: `2026-07-06`
 
 ## Overview
 
@@ -69,11 +69,13 @@ from core.taskSystem import ChainRetryBehavior
 
 ChainRetryBehavior.STOP_CHAIN   # Stop the entire chain immediately (default when no entry in map)
 ChainRetryBehavior.SKIP_TASK    # Skip failed task and continue with next
-ChainRetryBehavior.RETRY_TASK   # Retry the failed task (task-level; after exhausting retries, behaves as STOP_CHAIN)
+ChainRetryBehavior.RETRY_TASK   # Task-level retries only (uses task.maxRetries); if still failing, chain falls through and advances to the next task
 ChainRetryBehavior.RETRY_CHAIN  # Retry entire chain from the beginning (uses chain.maxRetries)
 ```
 
 > **Default behavior**: If a task class name is not present in `retryBehaviorMap`, the chain defaults to `STOP_CHAIN`.
+
+> **RETRY_TASK note**: Task-level retries are always applied via `task.maxRetries` inside `_executeSubTaskWithRetry`, regardless of this map entry. `handle()` has no dedicated `RETRY_TASK` branch — when the task fails after exhausting its own retries, execution falls through the switch and the chain advances to the next task (effectively same as `SKIP_TASK`). Use `STOP_CHAIN` (default) if you want the chain to halt on task-level exhaustion.
 
 ## Usage Examples
 
@@ -127,12 +129,14 @@ chain = taskManager.addChainTask(
         SaveTask(name='Save')
     ],
     retryBehaviorMap={
-        'FetchTask': ChainRetryBehavior.RETRY_TASK,    # Retry on network error
+        'FetchTask': ChainRetryBehavior.RETRY_TASK,    # Task-level retries only (task.maxRetries); advances if exhausted
         'ProcessTask': ChainRetryBehavior.SKIP_TASK,   # Skip if processing fails
         'SaveTask': ChainRetryBehavior.STOP_CHAIN      # Critical - stop chain
     }
 )
 ```
+
+> To actually retry on network error, set `task.maxRetries` on `FetchTask` (e.g. `FetchTask(maxRetries=3, retryDelaySeconds=5)`). The chain map entry alone does not add retries.
 
 ### Browser Automation Chain
 
