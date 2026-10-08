@@ -1,7 +1,7 @@
 # QtAppContext - Application Lifecycle Manager
 
 > **Central orchestrator for application context, services, and lifecycle management**
-> **Last synced**: `2026-06-09`
+> **Last synced**: `2026-07-19`
 
 ## Overview
 
@@ -111,6 +111,43 @@ ctx.releaseScope(taskId)  # Calls cleanup()/close()/dispose()
 
 ### State Management
 
+QtAppContext cung cấp 3 loại shared state:
+
+| Type | Use Case | Access |
+|------|----------|--------|
+| **Simple State** | Single values (string, int, dict, etc.) | `setState()` / `getState()` |
+| **SharedCollection** | List-based data với LINQ-style queries | `getCollection()` |
+| **SharedMap** | Key-value pairs với map operations | `getMap()` |
+
+#### When to Use Which
+
+Về bản chất, `setState()`/`getState()` có thể handle **mọi** shared state case — bạn có thể lưu list, dict, hay bất cứ gì qua nó. Sự khác biệt nằm ở **thread-safety granularity**:
+
+```
+setState('tasks', myList)
+# → Lock chỉ bảo vệ lúc get/set reference
+# → 2 threads cùng cầm refs của myList, push/pop tự do → race condition
+# → Ai setState() sau cùng là thắng (last-write-wins)
+
+col = ctx.getCollection('tasks')
+# → Lock bảo vệ mọi mutation (add/remove/update) ở level collection
+# → 2 threads gọi col.add() đồng thời → serialized, không mất data
+```
+
+**Decision guide:**
+
+| Scenario | Use |
+|----------|-----|
+| Giá trị đơn (flag, counter, config object) — chỉ read/replace nguyên khối | `setState()` / `getState()` |
+| List mà chỉ 1 thread write, nhiều threads read | `setState()` cũng đủ |
+| List mà nhiều threads cùng mutate (add/remove/update) | `SharedCollection` |
+| Dict mà chỉ 1 thread write, nhiều threads read | `setState()` cũng đủ |
+| Dict mà nhiều threads cùng mutate (set/remove/update keys) | `SharedMap` |
+
+**Tóm lại:** SharedCollection/SharedMap = `setState()` + **fine-grained locking** + **rich query API**. Nếu chỉ cần đọc/ghi nguyên khối từ 1 thread, `setState()` là đủ.
+
+#### Simple State
+
 ```python
 # Set shared state
 ctx.setState('current_user', {'id': 123, 'name': 'John'})
@@ -168,6 +205,79 @@ ctx.removeCollection('activeTasks')
 **Thread-safety model:**
 - Mutation methods giữ `QMutex` trong suốt thời gian thay đổi.
 - Query methods copy snapshot → release lock → gọi predicate/mapper của user, tránh deadlock.
+
+**Note:** Query methods được cung cấp bởi `CollectionHelperMixin` — có thể reuse cho custom collection classes.
+
+### SharedMap
+
+`SharedMap` là dạng Shared State cho key-value pairs (dict).  
+Thread-safe và cung cấp fluent interface với helper methods từ `MapHelperMixin`.
+
+```python
+# Lấy (hoặc tự động tạo mới) map theo key
+m = ctx.getMap('userSessions')
+
+# Fluent mutation
+m.set('user1', session1).set('user2', session2)
+m.setIfAbsent('user3', session3)    # set only if key absent; returns bool
+m.setMany({'u4': s4, 'u5': s5})
+m.remove('user1')
+m.removeWhere(lambda k, v: v.expired)
+m.removeWhereKey(lambda k: k.startswith('temp_'))
+m.removeWhereValue(lambda v: v.isInactive)
+m.update('user2', lambda v: v.refresh())
+m.updateWhere(lambda k, v: v.needsRefresh, lambda v: v.refresh())
+m.replace({'new': newSession})
+m.clear()
+
+# Atomic operations
+val = m.getAndRemove('user1')              # get + remove atomically
+val = m.computeIfAbsent('user1', lambda: Session())  # lazy init
+
+# Direct access
+val = m.get('user1')
+val = m.get('missing', default=None)
+val = m['user1']           # raises KeyError if missing
+m['user1'] = newSession
+del m['user1']
+
+# Query methods (snapshot-based — safe to call from any thread)
+keys    = m.keys()
+values  = m.values()
+items   = m.items()
+exists  = m.hasKey('user1')
+val     = m.getOrDefault('user1', defaultSession)
+filtered = m.whereKey(lambda k: k.startswith('admin_'))
+filtered = m.whereValue(lambda v: v.isActive)
+mapped   = m.selectValues(lambda v: v.userId)
+mapped   = m.selectKeys(lambda k: k.upper())
+firstK   = m.firstKey(lambda k: k.startswith('admin'))
+firstV   = m.firstValue(lambda v: v.priority > 5)
+entry    = m.firstEntry(lambda k, v: v.isAdmin)
+hasAny   = m.anyKey(lambda k: k.startswith('temp'))
+hasAny   = m.anyValue(lambda v: v.expired)
+allOk    = m.allKeys(lambda k: len(k) > 3)
+allOk    = m.allValues(lambda v: v.valid)
+countK   = m.countKeys(lambda k: k.startswith('user'))
+countV   = m.countValues(lambda v: v.isActive)
+grouped  = m.groupByValue(lambda v: v.role)  # -> dict[Role, list[tuple[K, V]]]
+snapshot = m.toDict()
+
+# Dunder helpers
+len(m)
+'user1' in m
+for k in m: ...   # iterates over keys (snapshot)
+
+# Management
+ctx.hasMap('userSessions')  # -> bool
+ctx.removeMap('userSessions')
+```
+
+**Thread-safety model:**
+- Mutation methods giữ `QMutex` trong suốt thời gian thay đổi.
+- Query methods copy snapshot → release lock → gọi predicate/mapper của user, tránh deadlock.
+
+**Note:** Query methods được cung cấp bởi `MapHelperMixin` — có thể reuse cho custom map classes.
 
 ### Lifecycle Signals
 

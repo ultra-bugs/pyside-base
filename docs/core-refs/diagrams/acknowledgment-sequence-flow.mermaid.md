@@ -1,3 +1,4 @@
+```mermaid
 %% Sequence Diagram - Core ACK/NACK Protocol Flow
 %% Luồng cơ bản của protocol, không phụ thuộc vào browser hay API cụ thể
 
@@ -44,3 +45,4 @@ sequenceDiagram
         Tracker->>Tracker: pending_count > 0?
     end
     Tracker-->>Receiver: all_acknowledged or timeout
+```
